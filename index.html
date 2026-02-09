@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>MetaMosque</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="app">
+
+    <!-- ================= MAIN MENU ================= -->
+    <div class="menuFrame" id="mainMenu">
+      <div class="menuInner">
+
+        <div class="topCalligraphy" aria-label="Bismillah">
+          بسم الله الرحمن الرحيم
+        </div>
+
+        <div class="topButtons">
+          <button class="pillBtn" data-action="exit">EXIT</button>
+          <button class="pillBtn" data-action="settings">SETTINGS</button>
+          <button class="pillBtn" data-action="options">OPTIONS</button>
+          <button class="pillBtn" data-action="majlis">MAJLIS</button>
+          <button class="pillBtn" data-action="metaimam">METAIMAM</button>
+        </div>
+
+        <div class="grid">
+          <button class="tile" data-scene="al-haram">
+            <img class="tileIcon" src="./assets/ui/al_haram.png" alt="Al Haram" />
+            <div class="tileLabel">AL HARAM</div>
+          </button>
+
+          <button class="tile" data-scene="al-aqsa">
+            <img class="tileIcon" src="./assets/ui/al_aqsa.png" alt="Al Aqsa & Dome of the Rock" />
+            <div class="tileLabel">AL AQSA &amp;<br/>DOME OF THE ROCK</div>
+          </button>
+
+          <button class="tile" data-scene="masjid-nabavi">
+            <img class="tileIcon" src="./assets/ui/masjid_nabavi.png" alt="Masjid Nabavi" />
+            <div class="tileLabel">MASJID NABAVI</div>
+          </button>
+
+          <button class="tile" data-scene="sheikh-zayed">
+            <img class="tileIcon" src="./assets/ui/sheikh_zayed.png" alt="Sheikh Zayed Grand Mosque" />
+            <div class="tileLabel">SHEIKH ZAYED<br/>GRAND MOSQUE</div>
+          </button>
+
+          <button class="tile" data-scene="hagia-sophia">
+            <img class="tileIcon" src="./assets/ui/hagia_sophia.png" alt="Hagia Sofia" />
+            <div class="tileLabel">HAGIA SOFIA</div>
+          </button>
+
+          <button class="tile" data-scene="blue-mosque">
+            <img class="tileIcon" src="./assets/ui/blue_mosque.png" alt="Blue Mosque" />
+            <div class="tileLabel">BLUE MOSQUE</div>
+          </button>
+
+          <button class="tile" data-scene="mohammed-bin-abdul-wahab">
+            <img class="tileIcon" src="./assets/ui/mohammed_bin_abdul_wahab.png" alt="Mohammed Bin Abdul Wahab" />
+            <div class="tileLabel">MOHAMMED BIN<br/>ABDUL WAHAB</div>
+          </button>
+
+          <button class="tile" data-scene="muhammed-ali">
+            <img class="tileIcon" src="./assets/ui/muhammed_ali.png" alt="Muhammed Ali" />
+            <div class="tileLabel">MUHAMMED ALI</div>
+          </button>
+
+          <button class="tile" data-scene="badshahi">
+            <img class="tileIcon" src="./assets/ui/badshahi.png" alt="Badshahi Mosque" />
+            <div class="tileLabel">BADSHAHI MOSQUE</div>
+          </button>
+
+          <button class="tile" data-scene="baghdad">
+            <img class="tileIcon" src="./assets/ui/mosque_city_baghdad.png" alt="Mosque City of Baghdad" />
+            <div class="tileLabel">MOSQUE CITY<br/>OF BAGHDAD</div>
+          </button>
+        </div>
+
+        <div class="footerHint">Press F for fullscreen</div>
+      </div>
+    </div>
+
+    <!-- ================= OPTIONS SCREEN ================= -->
+    <div class="menuFrame hidden" id="optionsScreen">
+      <div class="menuInner optionsInner">
+
+        <div class="optionsTopRow">
+          <button class="backBtn" type="button" data-action="backToMenu" aria-label="Back">
+            <span class="backIcon">↩</span>
+          </button>
+
+          <div class="optionsTitlePill">OPTIONS</div>
+
+          <div class="optionsTopSpacer"></div>
+        </div>
+
+        <div class="optionsBody">
+          <div class="optionsLeft">
+            <button class="optionPill" type="button" data-action="contact">CONTACT US</button>
+            <button class="optionPill" type="button" data-action="privacy">PRIVACY POLICY</button>
+            <button class="optionPill optionDisabled" type="button" disabled>LOGIN</button>
+            <button class="optionPill optionDisabled" type="button" disabled>DELETE ACCOUNT</button>
+          </div>
+
+          <div class="optionsCenter">
+            <div class="optionsLogoWrap">
+              <img src="./assets/ui/options_logo.png" class="optionsLogoImg" alt="Logo" draggable="false" />
+            </div>
+          </div>
+
+          <div class="optionsRight">
+            <div class="followUsPill">FOLLOW US</div>
+            <button class="socialBtn" type="button" data-action="facebook" aria-label="Facebook"><span class="socialIcon">f</span></button>
+            <button class="socialBtn" type="button" data-action="instagram" aria-label="Instagram"><span class="socialIcon">◎</span></button>
+            <button class="socialBtn" type="button" data-action="youtube" aria-label="YouTube"><span class="socialIcon">▶</span></button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================= EXIT OVERLAY ================= -->
+    <div class="exitOverlay hidden" id="exitOverlay" aria-hidden="true">
+      <div class="exitPanel" role="dialog" aria-modal="true" aria-labelledby="exitTitle">
+        <div class="exitText" id="exitTitle">ARE YOU SURE YOU WANT TO EXIT?</div>
+        <div class="exitButtons">
+          <button class="goldBtn yes" id="exitYes" type="button">YES</button>
+          <button class="goldBtn no" id="exitNo" type="button">NO</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= METAIMAM (HAJJ / UMRAH) OVERLAY ================= -->
+    <div class="pilgrimageOverlay hidden" id="pilgrimageOverlay" aria-hidden="true">
+      <div class="pilgrimagePanel" role="dialog" aria-modal="true" aria-labelledby="pilgrimageTitle">
+
+        <button class="pilgrimageBack" type="button" data-action="pilgrimageClose" aria-label="Close">
+          <span class="pilgrimageBackIcon">↩</span>
+        </button>
+
+        <div class="pilgrimageFrame">
+          <div class="pilgrimageTitle" id="pilgrimageTitle">
+            WHICH PILGRIMAGE DO YOU LIKE TO<br/>PERFORM?
+          </div>
+
+          <div class="pilgrimageButtons">
+            <button class="pilgrimagePill" type="button" data-action="chooseHajj">HAJJ</button>
+            <button class="pilgrimagePill" type="button" data-action="chooseUmrah">UMRAH</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ================= DISCLAIMER / LOADING OVERLAY ================= -->
+    <div class="disclaimerOverlay hidden" id="disclaimerOverlay" aria-hidden="true">
+      <div class="disclaimerPanel" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
+        <div class="disclaimerFrame">
+          <div class="disclaimerText" id="disclaimerTitle">
+            THIS VIRTUAL GAME EXPERIENCE IS FOR<br/>
+            EDUCATIONAL PURPOSES ONLY AND<br/>
+            SHOULD NOT BE SEEN AS A SUBSTITUTE<br/>
+            FOR RELIGIOUS PRACTICES LIKE HAJJ,<br/>
+            UMRAH, OR PRAYER.
+          </div>
+
+          <div class="disclaimerBtnRow">
+            <button class="disclaimerOk" type="button" data-action="disclaimerOk">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="./main.js"></script>
+</body>
+</html>
