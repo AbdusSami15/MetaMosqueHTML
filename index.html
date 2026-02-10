@@ -4,6 +4,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>MetaMosque</title>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/examples/jsm/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
   <link rel="stylesheet" href="./styles.css" />
 </head>
 <body>
@@ -84,14 +92,11 @@
     <!-- ================= OPTIONS SCREEN ================= -->
     <div class="menuFrame hidden" id="optionsScreen">
       <div class="menuInner optionsInner">
-
         <div class="optionsTopRow">
           <button class="backBtn" type="button" data-action="backToMenu" aria-label="Back">
             <span class="backIcon">↩</span>
           </button>
-
           <div class="optionsTitlePill">OPTIONS</div>
-
           <div class="optionsTopSpacer"></div>
         </div>
 
@@ -104,19 +109,19 @@
           </div>
 
           <div class="optionsCenter">
-            <div class="optionsLogoWrap">
-              <img src="./assets/ui/options_logo.png" class="optionsLogoImg" alt="Logo" draggable="false" />
+            <div class="optionsLogoWrap" id="optionsLogoWrap">
+              <img id="optionsLogoImg" class="optionsLogoImg" alt="Logo" draggable="false" />
+              <div class="optionsLogoPlaceholder hidden" id="optionsLogoPlaceholder"></div>
             </div>
           </div>
 
           <div class="optionsRight">
             <div class="followUsPill">FOLLOW US</div>
-            <button class="socialBtn" type="button" data-action="facebook" aria-label="Facebook"><span class="socialIcon">f</span></button>
-            <button class="socialBtn" type="button" data-action="instagram" aria-label="Instagram"><span class="socialIcon">◎</span></button>
-            <button class="socialBtn" type="button" data-action="youtube" aria-label="YouTube"><span class="socialIcon">▶</span></button>
+            <button class="socialBtn" type="button" data-action="facebook" aria-label="Facebook"><img class="socialImg" src="./assets/ui/fb.png" alt="" /></button>
+            <button class="socialBtn" type="button" data-action="instagram" aria-label="Instagram"><img class="socialImg" src="./assets/ui/ig.png" alt="" /></button>
+            <button class="socialBtn" type="button" data-action="youtube" aria-label="YouTube"><img class="socialImg" src="./assets/ui/yt.png" alt="" /></button>
           </div>
         </div>
-
       </div>
     </div>
 
@@ -128,13 +133,13 @@
           <button class="goldBtn yes" id="exitYes" type="button">YES</button>
           <button class="goldBtn no" id="exitNo" type="button">NO</button>
         </div>
+        <p class="exitHint hidden" id="exitHint">Please close the tab.</p>
       </div>
     </div>
 
     <!-- ================= METAIMAM (HAJJ / UMRAH) OVERLAY ================= -->
     <div class="pilgrimageOverlay hidden" id="pilgrimageOverlay" aria-hidden="true">
       <div class="pilgrimagePanel" role="dialog" aria-modal="true" aria-labelledby="pilgrimageTitle">
-
         <button class="pilgrimageBack" type="button" data-action="pilgrimageClose" aria-label="Close">
           <span class="pilgrimageBackIcon">↩</span>
         </button>
@@ -143,17 +148,15 @@
           <div class="pilgrimageTitle" id="pilgrimageTitle">
             WHICH PILGRIMAGE DO YOU LIKE TO<br/>PERFORM?
           </div>
-
           <div class="pilgrimageButtons">
             <button class="pilgrimagePill" type="button" data-action="chooseHajj">HAJJ</button>
             <button class="pilgrimagePill" type="button" data-action="chooseUmrah">UMRAH</button>
           </div>
         </div>
-
       </div>
     </div>
 
-    <!-- ================= DISCLAIMER / LOADING OVERLAY ================= -->
+    <!-- ================= DISCLAIMER OVERLAY ================= -->
     <div class="disclaimerOverlay hidden" id="disclaimerOverlay" aria-hidden="true">
       <div class="disclaimerPanel" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
         <div class="disclaimerFrame">
@@ -166,7 +169,50 @@
           </div>
 
           <div class="disclaimerBtnRow">
-            <button class="disclaimerOk" type="button" data-action="disclaimerOk">OK</button>
+            <button class="disclaimerOk" id="disclaimerOk" type="button" data-action="disclaimerOk">OK</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= LOADING OVERLAY ================= -->
+    <div class="loadingOverlay hidden" id="loadingOverlay" aria-hidden="true">
+      <div class="loadingPanel">
+        <div class="loadingText" id="loadingText">Loading...</div>
+      </div>
+    </div>
+
+    <!-- ================= NEW SCENE (First-Person + Triggers) ================= -->
+    <div class="sceneRoot hidden" id="sceneRoot">
+      <canvas id="sceneCanvas"></canvas>
+      <div class="sceneHint" id="sceneHint">Click to look around · WASD to move</div>
+      <div class="sceneVideoOverlay hidden" id="sceneVideoOverlay">
+        <video id="sceneVideo" playsinline preload="metadata"></video>
+        <audio id="sceneAudio" preload="metadata"></audio>
+      </div>
+      <button class="sceneBackBtn hudBtn" type="button" data-action="sceneBackToMenu" aria-label="Back to menu">BACK</button>
+    </div>
+
+    <!-- ================= TRAINING SCENE ================= -->
+    <div class="trainingRoot hidden" id="trainingRoot">
+      <div class="trainingBg" id="trainingBg" aria-hidden="true"></div>
+      <div class="trainingViewport">
+        <div class="trainingHUD">
+          <div class="trainingVideoFrame" id="trainingVideoFrame">
+            <div class="trainingVideoInner">
+              <video id="trainingVideo" playsinline preload="metadata"></video>
+              <audio id="trainingAudio" preload="metadata"></audio>
+              <div class="tapToPlayOverlay hidden" id="tapToPlayOverlay">
+                <span>Tap to Play</span>
+              </div>
+            </div>
+          </div>
+          <div class="trainingCharacter" id="trainingCharacter" aria-hidden="true"></div>
+          <div class="trainingControls">
+            <button class="hudBtn" type="button" data-action="trainNext">NEXT</button>
+            <button class="hudBtn" type="button" data-action="trainRestart">RESTART</button>
+            <button class="hudBtn" type="button" data-action="trainPause">PAUSE</button>
+            <button class="hudBtn" type="button" data-action="trainSkip">SKIP</button>
           </div>
         </div>
       </div>
@@ -175,5 +221,7 @@
   </div>
 
   <script src="./main.js"></script>
+  <script type="module" src="./training.js"></script>
+  <script type="module" src="./scene.js"></script>
 </body>
 </html>

@@ -1,0 +1,7 @@
+{
+  "playlist": [
+    { "video": "../media/videos/kaba.mp4", "audio": "../media/audio/niyat.mp3" },
+    { "video": "../media/videos/ihram.mp4", "audio": "../media/audio/talbiyah.mp3" },
+    { "video": "../media/videos/tawaf.mp4", "audio": "../media/audio/dua.mp3" }
+  ]
+}

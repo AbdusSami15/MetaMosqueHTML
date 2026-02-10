@@ -1,0 +1,12 @@
+{
+  "id": "umrah_haram",
+  "title": "Masjid Al Haram",
+  "player": {
+    "spawn": [0, 1.6, 5],
+    "moveSpeed": 0.15
+  },
+  "environment": {
+    "model": "../environment/models/environment.glb",
+    "backgroundColor": "#87CEEB"
+  }
+}

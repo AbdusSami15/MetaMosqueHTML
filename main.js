@@ -1,18 +1,23 @@
+const OPTIONS_LOGO_PATH = "assets/ui/options_logo.webp";
+
 const mainMenu = document.getElementById("mainMenu");
 const optionsScreen = document.getElementById("optionsScreen");
-
+const optionsLogoImg = document.getElementById("optionsLogoImg");
+const optionsLogoPlaceholder = document.getElementById("optionsLogoPlaceholder");
 const exitOverlay = document.getElementById("exitOverlay");
 const exitYes = document.getElementById("exitYes");
 const exitNo = document.getElementById("exitNo");
-
+const exitHint = document.getElementById("exitHint");
+const loadingOverlay = document.getElementById("loadingOverlay");
 const pilgrimageOverlay = document.getElementById("pilgrimageOverlay");
 const disclaimerOverlay = document.getElementById("disclaimerOverlay");
+const trainingRoot = document.getElementById("trainingRoot");
+const sceneRoot = document.getElementById("sceneRoot");
 
 let exitOpen = false;
 let pilgrimageOpen = false;
 let disclaimerOpen = false;
-
-let pendingPilgrimage = null; // "hajj" | "umrah"
+let pendingPilgrimage = null;
 
 function show(el) { if (el) el.classList.remove("hidden"); }
 function hide(el) { if (el) el.classList.add("hidden"); }
@@ -20,6 +25,8 @@ function hide(el) { if (el) el.classList.add("hidden"); }
 function showMainMenu() {
   show(mainMenu);
   hide(optionsScreen);
+  hide(trainingRoot);
+  if (sceneRoot) hide(sceneRoot);
 }
 
 function showOptions() {
@@ -27,9 +34,27 @@ function showOptions() {
   show(optionsScreen);
 }
 
+function initOptionsLogo() {
+  if (!optionsLogoImg || !optionsLogoPlaceholder) return;
+  const path = OPTIONS_LOGO_PATH.startsWith("./") ? OPTIONS_LOGO_PATH : "./" + OPTIONS_LOGO_PATH;
+  show(optionsLogoPlaceholder);
+  hide(optionsLogoImg);
+  optionsLogoImg.onload = function () {
+    hide(optionsLogoPlaceholder);
+    show(optionsLogoImg);
+  };
+  optionsLogoImg.onerror = function () {
+    console.warn("MetaMosque: options logo not found at " + path);
+    show(optionsLogoPlaceholder);
+    hide(optionsLogoImg);
+  };
+  optionsLogoImg.src = path;
+}
+
 function openExit() {
   if (!exitOverlay) return;
   show(exitOverlay);
+  if (exitHint) hide(exitHint);
   exitOverlay.setAttribute("aria-hidden", "false");
   exitOpen = true;
   if (exitNo) exitNo.focus();
@@ -43,9 +68,10 @@ function closeExit() {
 }
 
 function confirmExit() {
-  try { window.close(); } catch (_) {}
-  document.body.innerHTML =
-    "<div style='height:100vh;display:flex;align-items:center;justify-content:center;background:#000;color:#fff;font-family:system-ui,Segoe UI,Arial'>Session Ended</div>";
+  try {
+    window.close();
+  } catch (_) {}
+  if (exitHint) show(exitHint);
 }
 
 function openPilgrimage() {
@@ -63,7 +89,7 @@ function closePilgrimage() {
 }
 
 function openDisclaimer(mode) {
-  pendingPilgrimage = mode; // "hajj" or "umrah"
+  pendingPilgrimage = mode;
   if (!disclaimerOverlay) return;
   show(disclaimerOverlay);
   disclaimerOverlay.setAttribute("aria-hidden", "false");
@@ -77,59 +103,51 @@ function closeDisclaimer() {
   disclaimerOpen = false;
 }
 
+function showLoading() {
+  if (loadingOverlay) show(loadingOverlay);
+}
+
+function hideLoading() {
+  if (loadingOverlay) hide(loadingOverlay);
+}
+
 function proceedAfterDisclaimer() {
   const mode = pendingPilgrimage;
   pendingPilgrimage = null;
-
-  // Close overlays
   closeDisclaimer();
   closePilgrimage();
-
-  // TODO: yahan actual Three.js scene/flow start karo
-  console.log("Proceed to:", mode);
-
-  // Example placeholder: show a lightweight "loading" log
-  // You can replace with real loader (assets fetch, progress bar, etc.)
+  showLoading();
+  setTimeout(function () {
+    hideLoading();
+    hide(mainMenu);
+    hide(optionsScreen);
+    show(trainingRoot);
+    window.dispatchEvent(new CustomEvent("metamosque:startTraining", { detail: { mode } }));
+  }, 1200);
 }
 
 document.addEventListener("click", (e) => {
   const actionBtn = e.target.closest("[data-action]");
   if (actionBtn) {
     const action = actionBtn.getAttribute("data-action");
-
-    // MAIN TOP BUTTONS
     if (action === "exit") { openExit(); return; }
     if (action === "options") { showOptions(); return; }
     if (action === "backToMenu") { showMainMenu(); return; }
-
-    // METAIMAM -> OPEN HAJJ/UMRAH PANEL
     if (action === "metaimam") { openPilgrimage(); return; }
-
-    // PILGRIMAGE PANEL
     if (action === "pilgrimageClose") { closePilgrimage(); return; }
     if (action === "chooseHajj") { openDisclaimer("hajj"); return; }
     if (action === "chooseUmrah") { openDisclaimer("umrah"); return; }
-
-    // DISCLAIMER OK
-    if (action === "disclaimerOk") { proceedAfterDisclaimer(); return; }
-
-    // OPTIONS ACTIONS
-    if (action === "contact") { console.log("CONTACT US"); return; }
-    if (action === "privacy") { console.log("PRIVACY POLICY"); return; }
-    if (action === "facebook") { console.log("FACEBOOK"); return; }
-    if (action === "instagram") { console.log("INSTAGRAM"); return; }
-    if (action === "youtube") { console.log("YOUTUBE"); return; }
-
-    console.log("Action:", action);
+    if (action === "disclaimerOk") {
+      if (pendingPilgrimage !== null) proceedAfterDisclaimer();
+      return;
+    }
+    if (action === "sceneBackToMenu") {
+      hide(sceneRoot);
+      show(mainMenu);
+      return;
+    }
     return;
   }
-
-  const tileBtn = e.target.closest("[data-scene]");
-  if (tileBtn) {
-    console.log("Selected scene:", tileBtn.getAttribute("data-scene"));
-  }
-
-  // click outside close overlays
   if (exitOpen && e.target === exitOverlay) closeExit();
   if (pilgrimageOpen && e.target === pilgrimageOverlay) closePilgrimage();
   if (disclaimerOpen && e.target === disclaimerOverlay) closeDisclaimer();
@@ -146,19 +164,21 @@ window.addEventListener("keydown", (e) => {
       document.exitFullscreen().catch(() => {});
     }
   }
-
   if (e.key === "Escape") {
     if (exitOpen) { closeExit(); return; }
     if (disclaimerOpen) { closeDisclaimer(); return; }
     if (pilgrimageOpen) { closePilgrimage(); return; }
-
-    if (optionsScreen && !optionsScreen.classList.contains("hidden")) {
-      showMainMenu();
-    }
   }
-
   if (exitOpen && e.key === "Enter") confirmExit();
 });
 
-// default view
+window.addEventListener("metamosque:goToScene", function (e) {
+  hide(mainMenu);
+  hide(optionsScreen);
+  hide(trainingRoot);
+  if (sceneRoot) show(sceneRoot);
+  window.dispatchEvent(new CustomEvent("metamosque:sceneReady", e));
+});
+
+initOptionsLogo();
 showMainMenu();

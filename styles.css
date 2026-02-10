@@ -21,14 +21,16 @@ html, body{
   width:100%;
   height:100%;
   margin:0;
+  padding:0;
   overflow:hidden;
-  background:#ffffff;
+  background:#000;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
 .app{
   width:100vw;
   height:100vh;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .hidden{ display:none !important; }
@@ -85,7 +87,7 @@ html, body{
   white-space: nowrap;
 }
 
-.pillBtn:hover{ filter: brightness(1.03); }
+.pillBtn:hover{ filter: brightness(1.08); }
 .pillBtn:active{ transform: translateY(1px); }
 .pillBtn.active{ outline:2px solid rgba(177,120,36,.55); }
 
@@ -109,6 +111,9 @@ html, body{
   width:100%;
   max-width: 260px;
 }
+
+.tile:hover .tileIcon{ filter: drop-shadow(0 8px 14px rgba(0,0,0,.2)); }
+.tile:active .tileIcon{ transform: scale(0.98); }
 
 .tileIcon{
   width:100%;
@@ -160,11 +165,10 @@ html, body{
   align-items:center;
   justify-content:center;
   z-index: 9999;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-.exitOverlay.hidden{
-  display:none;
-}
+.exitOverlay.hidden{ display:none; }
 
 .exitPanel{
   width: min(92vw, 820px);
@@ -208,6 +212,15 @@ html, body{
   flex-wrap: wrap;
 }
 
+.exitHint{
+  text-align: center;
+  font-size: clamp(12px, 2vw, 16px);
+  color: rgba(0,0,0,.6);
+  margin-top: clamp(12px, 2vw, 20px);
+}
+
+.exitHint.hidden{ display: none !important; }
+
 .goldBtn{
   min-width: clamp(120px, 30vw, 180px);
   padding: clamp(10px, 2vw, 16px);
@@ -222,6 +235,7 @@ html, body{
               0 12px 22px rgba(0,0,0,.25);
 }
 
+.goldBtn:hover{ filter: brightness(1.06); }
 .goldBtn:active{
   transform: translateY(2px);
   box-shadow: 0 2px 0 rgba(120,70,10,.45);
@@ -255,6 +269,7 @@ html, body{
   justify-content:center;
 }
 
+.backBtn:hover{ background: #eee; }
 .backBtn:active{ transform: translateY(1px); }
 
 .backIcon{
@@ -284,7 +299,8 @@ html, body{
   align-items:center;
   gap: clamp(10px, 2vw, 30px);
   padding: clamp(8px, 1.8vw, 20px);
-  overflow:hidden;
+  overflow:auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .optionsLeft{
@@ -310,6 +326,7 @@ html, body{
   font-size: clamp(14px, 2vw, 22px);
 }
 
+.optionPill:hover{ filter: brightness(1.06); }
 .optionPill:active{ transform: translateY(1px); }
 
 .optionDisabled{
@@ -319,6 +336,8 @@ html, body{
   border-color: rgba(0,0,0,.12);
   box-shadow: none;
 }
+
+.optionDisabled:hover{ filter: none; }
 
 .optionsCenter{
   display:flex;
@@ -332,6 +351,7 @@ html, body{
   display:flex;
   align-items:center;
   justify-content:center;
+  position: relative;
 }
 
 .optionsLogoPlaceholder{
@@ -385,9 +405,18 @@ html, body{
   display:flex;
   align-items:center;
   justify-content:center;
+  padding: 0;
 }
 
+.socialBtn:hover{ filter: brightness(1.08); }
 .socialBtn:active{ transform: translateY(1px); }
+
+.socialImg{
+  width: 50%;
+  height: 50%;
+  object-fit: contain;
+  pointer-events: none;
+}
 
 .socialIcon{
   font-size: clamp(26px, 3vw, 44px);
@@ -396,21 +425,6 @@ html, body{
   text-shadow: 0 2px 10px rgba(0,0,0,.25);
 }
 
-/* Mobile stacking for options screen */
-@media (max-width: 860px){
-  .optionsBody{
-    grid-template-columns: 1fr;
-    align-items:start;
-    overflow:auto;
-    -webkit-overflow-scrolling: touch;
-  }
-  .optionsLeft{
-    align-items:center;
-  }
-  .optionsRight{
-    align-items:center;
-  }
-}
 .optionsLogoImg{
   width: 100%;
   height: 100%;
@@ -419,6 +433,18 @@ html, body{
   filter: drop-shadow(0 18px 24px rgba(0,0,0,.12));
   user-select: none;
 }
+
+@media (max-width: 860px){
+  .optionsBody{
+    grid-template-columns: 1fr;
+    align-items:center;
+    overflow:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .optionsLeft{ align-items:center; }
+  .optionsRight{ align-items:center; }
+}
+
 /* ================= METAIMAM (HAJJ / UMRAH) ================= */
 
 .pilgrimageOverlay{
@@ -430,6 +456,7 @@ html, body{
   align-items:center;
   justify-content:center;
   z-index: 9998;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 .pilgrimageOverlay.hidden{ display:none; }
@@ -460,6 +487,7 @@ html, body{
   justify-content:center;
 }
 
+.pilgrimageBack:hover{ background: #eee; }
 .pilgrimageBack:active{ transform: translateY(1px); }
 
 .pilgrimageBackIcon{
@@ -524,10 +552,12 @@ html, body{
               0 12px 22px rgba(0,0,0,.18);
 }
 
+.pilgrimagePill:hover{ filter: brightness(1.06); }
 .pilgrimagePill:active{
   transform: translateY(2px);
   box-shadow: 0 2px 0 rgba(120,70,10,.45);
 }
+
 /* ================= FULLSCREEN DISCLAIMER ================= */
 
 .disclaimerOverlay{
@@ -539,19 +569,14 @@ html, body{
   align-items: center;
   justify-content: center;
   z-index: 9999;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
-.disclaimerOverlay.hidden{
-  display: none;
-}
+.disclaimerOverlay.hidden{ display: none; }
 
 .disclaimerPanel{
-  width: 100vw;
-  height: 100vh;
-  padding: env(safe-area-inset-top)
-           env(safe-area-inset-right)
-           env(safe-area-inset-bottom)
-           env(safe-area-inset-left);
+  width: 100%;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -559,18 +584,19 @@ html, body{
 
 .disclaimerFrame{
   width: 90%;
-  height: 90%;
+  max-width: 1100px;
+  min-height: 40%;
   background: #ffffff;
   border-radius: 0;
   position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: clamp(24px, 6vw, 96px);
   box-shadow: none;
 }
 
-/* GOLD OUTER BORDER */
 .disclaimerFrame::before{
   content: "";
   position: absolute;
@@ -585,7 +611,6 @@ html, body{
   z-index: -1;
 }
 
-/* INNER THIN FRAME */
 .disclaimerFrame::after{
   content: "";
   position: absolute;
@@ -605,12 +630,8 @@ html, body{
   font-size: clamp(14px, 2.2vw, 26px);
 }
 
-/* OK BUTTON */
 .disclaimerBtnRow{
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: clamp(28px, 80vh, 80px);
+  margin-top: clamp(24px, 4vw, 48px);
   display: flex;
   justify-content: center;
 }
@@ -630,8 +651,439 @@ html, body{
     0 14px 30px rgba(0,0,0,.25);
 }
 
+.disclaimerOk:hover{ filter: brightness(1.06); }
 .disclaimerOk:active{
   transform: translateY(2px);
   box-shadow: 0 2px 0 rgba(120,70,10,.45);
+}
+
+/* ================= LOADING OVERLAY ================= */
+
+.loadingOverlay{
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.loadingOverlay.hidden{ display: none !important; }
+
+.loadingPanel{
+  background: linear-gradient(#fff4c9, #e5b554);
+  border: 4px solid #b07a12;
+  padding: clamp(32px, 6vw, 64px);
+  border-radius: 16px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.4);
+}
+
+.loadingText{
+  font-size: clamp(18px, 3vw, 28px);
+  font-weight: 800;
+  color: #7a4b0d;
+  letter-spacing: 1px;
+}
+
+/* ================= TRAINING SCENE ================= */
+
+.trainingRoot{
+  position: fixed;
+  inset: 0;
+  z-index: 9000;
+  background: #2a2520;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trainingRoot.hidden{ display:none; }
+
+.trainingBg{
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  //filter: blur(3px);
+}
+
+.trainingViewport{
+  position: relative;
+  width: min(100%, 100vh * 16/10);
+  height: min(100%, 100vw * 10/16);
+  aspect-ratio: 16 / 10;
+  max-width: 100%;
+  max-height: 100%;
+  flex-shrink: 0;
+}
+
+.trainingHUD{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 1fr minmax(0, auto);
+  grid-template-columns: 1fr;
+  row-gap: 0;
+  pointer-events: none;
+  padding: 2% 22% 6% 2%;
+  box-sizing: border-box;
+}
+
+.trainingHUD .trainingVideoFrame{ pointer-events: auto; }
+.trainingHUD .trainingControls{ pointer-events: auto; }
+
+.trainingCharacter{ display: none; }
+
+.trainingVideoFrame{
+  grid-row: 1;
+  grid-column: 1;
+  width: 100%;
+  max-width: 100%;
+  height: 70%;
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+  justify-self: start;
+  align-self: end;
+  max-height: 100%;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  background: #000;
+  box-sizing: border-box;
+  box-shadow:
+    0 2px 0 rgba(255,235,180,.5),
+    0 4px 0 #8a6912,
+    0 6px 0 #6b5010,
+    inset 0 1px 0 rgba(255,245,220,.7),
+    inset 0 -1px 0 rgba(80,55,10,.4),
+    0 16px 40px rgba(0,0,0,.35);
+}
+
+.trainingVideoFrame::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  border-top-color: rgba(255,235,180,.6);
+  border-left-color: rgba(220,180,80,.5);
+  border-bottom-color: rgba(90,65,15,.7);
+  border-right-color: rgba(120,85,20,.6);
+  pointer-events: none;
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+.trainingVideoInner{
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.trainingVideoInner video{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.tapToPlayOverlay{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.5);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tapToPlayOverlay.hidden{ display: none !important; }
+
+.tapToPlayOverlay span{
+  font-size: clamp(14px, 2.5vw, 22px);
+  font-weight: 700;
+  color: #fff;
+  text-shadow: 0 2px 8px rgba(0,0,0,.5);
+  padding: clamp(12px, 2vw, 20px) clamp(20px, 3vw, 32px);
+  border: 2px solid rgba(255,255,255,.8);
+  border-radius: 999px;
+}
+
+.tapToPlayOverlay:hover span{ background: rgba(255,255,255,.15); }
+
+.trainingControls{
+  grid-row: 2;
+  grid-column: 1;
+  width: 100%;
+  max-width: 100%;
+  justify-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 0.1em;
+  padding: 2px 0 max(6px, env(safe-area-inset-bottom));
+  min-height: 0;
+  background: transparent;
+  position: relative;
+  z-index: 2;
+}
+
+.hudBtn{
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
+  padding: clamp(8px, 1vw, 12px) clamp(10px, 1.2vw, 18px);
+  border-radius: 999px;
+  border: none;
+  background: linear-gradient(180deg, #fff4d0 0%, #e8c55a 35%, #c99020 70%, #a67210 100%);
+  color: #6b4a0a;
+  font-weight: 800;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow:
+    0 1px 0 rgba(255,250,230,.8),
+    0 3px 0 #8a6912,
+    0 4px 0 #6b5010,
+    inset 0 1px 0 rgba(255,255,255,.4),
+    inset 0 -1px 0 rgba(60,40,0,.25);
+  font-size: clamp(10px, 1.5vw, 14px);
+  text-align: center;
+}
+
+.hudBtn:hover{ filter: brightness(1.08); }
+.hudBtn:active{
+  transform: translateY(2px);
+  box-shadow: 0 2px 0 rgba(120,70,10,.45);
+}
+
+.hudBtn.hudBtnDisabled{
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+@media (max-width: 500px){
+  .trainingControls{ gap: 0.1em; padding: 2px 6px max(4px, env(safe-area-inset-bottom)); }
+  .hudBtn{ padding: 6px 8px; font-size: 9px; letter-spacing: 0.4px; }
+}
+/* ===== OPTIONS: fix right side cut + keep one screen ===== */
+.optionsBody{
+  overflow: hidden !important;
+  /* safer 3-column layout (no clipping) */
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr) minmax(0, 0.85fr) !important;
+  gap: clamp(10px, 2vw, 22px) !important;
+  padding: clamp(10px, 1.6vw, 18px) !important;
+  align-items: center !important;
+}
+
+/* Right column must never exceed its grid track */
+.optionsRight{
+  width: 100% !important;
+  min-width: 0 !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Follow-us pill should fit inside right column */
+.followUsPill{
+  width: 100% !important;
+  max-width: 240px !important;
+  text-align: center !important;
+  padding: 12px 18px !important;
+  font-size: clamp(12px, 1.6vw, 18px) !important;
+}
+
+/* Social buttons smaller so they don't push layout */
+.socialBtn{
+  width: clamp(56px, 7vw, 96px) !important;
+  height: clamp(56px, 7vw, 96px) !important;
+}
+
+/* Keep left pills slightly smaller to help fit */
+.optionPill{
+  width: min(320px, 100%) !important;
+  padding: 12px 22px !important;
+  font-size: clamp(12px, 1.6vw, 18px) !important;
+}
+
+/* Prevent any child from causing horizontal overflow */
+.optionsLeft, .optionsCenter, .optionsRight{
+  min-width: 0 !important;
+}
+/* =========================================================
+   MAIN MENU (ONLY): keep SAME 5x2 layout on mobile WITHOUT CUT
+   Paste at END of styles.css
+   ========================================================= */
+
+@media (max-width: 860px){
+
+  /* Reduce inner padding so content gets more height */
+  #mainMenu .menuInner{
+    padding: 10px !important;
+  }
+
+  /* Title + top buttons take less vertical space */
+  #mainMenu .topCalligraphy{
+    padding: 2px 0 4px !important;
+    margin: 0 !important;
+    font-size: 16px !important;
+  }
+
+  #mainMenu .topButtons{
+    padding: 0 0 6px !important;
+    margin: 0 !important;
+    gap: 8px !important;
+    flex-wrap: nowrap !important;
+    transform: scale(.85) !important;
+    transform-origin: top center;
+    width: calc(100% / .85) !important;
+  }
+
+  /* Grid stays 5 columns, 2 rows, NO scroll */
+  #mainMenu .grid{
+    overflow: hidden !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    grid-template-rows: repeat(2, minmax(0, 1fr)) !important;
+
+    gap: 8px !important;
+    padding: 8px !important;
+
+    align-content: stretch !important;
+    justify-items: center !important;
+    align-items: stretch !important;
+  }
+
+  /* Tile layout: stable icon area + stable label area */
+  #mainMenu .tile{
+    width: 100% !important;
+    max-width: none !important;
+    height: 100% !important;
+
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+
+    overflow: visible !important;
+  }
+
+  /* IMPORTANT: kill height:100% behavior so icon never gets clipped */
+  #mainMenu .tileIcon{
+    height: auto !important;
+    width: 100% !important;
+    max-width: 100% !important;
+
+    /* Hard cap so top/bottom never cuts */
+    max-height: 56px !important;
+
+    object-fit: contain !important;
+    object-position: center bottom !important;
+
+    margin: 0 auto 4px !important;
+
+    /* optional perf: remove heavy shadow on mobile */
+    filter: none !important;
+  }
+
+  /* Labels: 2 lines max, never cut */
+  #mainMenu .tileLabel{
+    width: 100% !important;
+    padding: 0 4px !important;
+    margin: 0 !important;
+
+    font-size: 8px !important;
+    line-height: 1.05 !important;
+    letter-spacing: .5px !important;
+
+    display: -webkit-box !important;
+    -webkit-line-clamp: 2 !important;
+    -webkit-box-orient: vertical !important;
+
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
+    text-align: center !important;
+  }
+
+  /* Remove hint to free height (prevents bottom cutting) */
+  #mainMenu .footerHint{ display: none !important; }
+}
+
+@media (max-width: 520px){
+  #mainMenu .tileIcon{ max-height: 48px !important; }
+  #mainMenu .tileLabel{ font-size: 7.5px !important; }
+  #mainMenu .topButtons{
+    transform: scale(.78) !important;
+    width: calc(100% / .78) !important;
+  }
+}
+
+@media (max-width: 860px) and (max-height: 420px){
+  #mainMenu .tileIcon{ max-height: 42px !important; }
+  #mainMenu .tileLabel{ font-size: 7px !important; }
+}
+
+/* ================= NEW SCENE (First-Person) ================= */
+.sceneRoot{
+  position: fixed;
+  inset: 0;
+  z-index: 9100;
+  background: #1a1a1a;
+}
+
+.sceneRoot.hidden{ display: none !important; }
+
+#sceneCanvas{
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.sceneHint{
+  position: absolute;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  color: rgba(255,255,255,.9);
+  font-size: 14px;
+  text-shadow: 0 1px 3px rgba(0,0,0,.5);
+  z-index: 2;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+.sceneHint.hidden{ opacity: 0; pointer-events: none; }
+
+.sceneVideoOverlay{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,.7);
+  z-index: 2;
+}
+
+.sceneVideoOverlay.hidden{ display: none !important; }
+
+.sceneVideoOverlay video{
+  max-width: 90%;
+  max-height: 90%;
+  object-fit: contain;
+}
+
+.sceneBackBtn{
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  left: max(12px, env(safe-area-inset-left));
+  z-index: 3;
 }
 
