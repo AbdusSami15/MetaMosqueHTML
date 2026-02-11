@@ -1,4 +1,7 @@
 const OPTIONS_LOGO_PATH = "assets/ui/options_logo.webp";
+function assetUrl(rel) {
+  return (typeof window !== "undefined" && window.resolveAssetUrl) ? window.resolveAssetUrl(rel) : (rel.startsWith("./") ? rel : "./" + rel);
+}
 
 const mainMenu = document.getElementById("mainMenu");
 const optionsScreen = document.getElementById("optionsScreen");
@@ -36,7 +39,7 @@ function showOptions() {
 
 function initOptionsLogo() {
   if (!optionsLogoImg || !optionsLogoPlaceholder) return;
-  const path = OPTIONS_LOGO_PATH.startsWith("./") ? OPTIONS_LOGO_PATH : "./" + OPTIONS_LOGO_PATH;
+  const path = assetUrl(OPTIONS_LOGO_PATH);
   show(optionsLogoPlaceholder);
   hide(optionsLogoImg);
   optionsLogoImg.onload = function () {

@@ -1,0 +1,13 @@
+# Option A: Build with Vite, publish dist (default)
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# Option B: No build — in Netlify UI set Build command = (empty), Publish directory = .
+
+# SPA: serve index.html for all routes (history fallback)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  force = false

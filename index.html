@@ -4,6 +4,25 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>MetaMosque</title>
+  <!-- Base path for static hosts: set window.__BASE_PATH__ before this to override (e.g. GitHub Pages). -->
+  <script>
+    (function(){
+      var base = window.__BASE_PATH__;
+      if (base === undefined || base === null) {
+        var p = document.location.pathname;
+        base = (p.endsWith("/") ? p : p.replace(/\/[^/]*$/, "/")) || "/";
+      }
+      if (typeof base !== "string") base = "/";
+      base = base.replace(/\\/g, "/").replace(/\/+/g, "/").trim();
+      if (!base.startsWith("/")) base = "/" + base;
+      if (base !== "/" && !base.endsWith("/")) base += "/";
+      window.__BASE_PATH__ = base;
+      var el = document.createElement("base");
+      el.id = "app-base";
+      el.href = document.location.origin + (base === "/" ? "" : base);
+      document.head.appendChild(el);
+    })();
+  </script>
   <script type="importmap">
   {
     "imports": {

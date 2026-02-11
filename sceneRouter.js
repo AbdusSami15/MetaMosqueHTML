@@ -1,3 +1,12 @@
+import { setBaseFromEntry, getBasePath, join, resolveUrl } from "./src/basePath.js";
+
+setBaseFromEntry(import.meta.url);
+if (typeof window !== "undefined") {
+  window.getBasePath = getBasePath;
+  window.joinBase = join;
+  window.resolveAssetUrl = resolveUrl;
+}
+
 const mainMenu = document.getElementById("mainMenu");
 const loadingOverlay = document.getElementById("loadingOverlay");
 const sceneRoot = document.getElementById("sceneRoot");
@@ -14,6 +23,8 @@ async function enterScene(sceneId) {
 
   hide(mainMenu);
   if (loadingOverlay) show(loadingOverlay);
+
+  const sceneBaseUrl = resolveUrl(`assets/scenes/${sceneId}/`);
 
   let mod = moduleCache.get(sceneId);
   if (!mod) {
@@ -32,10 +43,9 @@ async function enterScene(sceneId) {
   if (sceneRoot) show(sceneRoot);
   await new Promise(r => requestAnimationFrame(r));
 
-  const basePath = `./assets/scenes/${sceneId}/`;
   const ctx = {
     sceneId,
-    basePath,
+    basePath: sceneBaseUrl,
     sceneRoot,
     canvas: document.getElementById("sceneCanvas"),
     hint: document.getElementById("sceneHint"),

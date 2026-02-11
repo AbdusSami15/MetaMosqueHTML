@@ -78,19 +78,14 @@ function autoFindButtons() {
 }
 
 async function loadSceneConfig(basePath) {
-  const tryUrls = [
-    `${basePath}config/scene.config.json`,
-    `/assets/scenes/umrah_haram/config/scene.config.json`,
-  ];
-
-  for (const url of tryUrls) {
-    try {
-      const res = await fetch(url, { cache: "no-store" });
-      if (!res.ok) continue;
-      return await res.json();
-    } catch (_) {}
+  const url = `${basePath}config/scene.config.json`;
+  try {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_) {
+    return null;
   }
-  return null;
 }
 
 function snapModelToGround(root, groundYLocal = 0) {

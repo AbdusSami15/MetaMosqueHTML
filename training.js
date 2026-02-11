@@ -1,17 +1,6 @@
+import { resolveUrl } from "./src/basePath.js";
+
 const NEXT_SCENE_NAME = "SCENE";
-
-/** Root = folder containing index.html (same as ./ in HTML). Works for / or /subfolder/ */
-function getDocumentBase() {
-  const u = window.location.href.replace(/[#?].*$/, "");
-  return u.endsWith("/") ? u : u.replace(/\/[^/]*$/, "/");
-}
-
-function toAbsoluteUrl(path) {
-  if (!path) return path;
-  if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  const pathNorm = path.startsWith("/") ? path.slice(1) : path;
-  return new URL(pathNorm, getDocumentBase()).href;
-}
 
 const TRAINING_CONFIG = {
   backgroundImage: "assets/bg/training_room_bg.jpg",
@@ -58,10 +47,7 @@ function forceHideTapOverlay() {
 function setBackground() {
   if (!trainingBg) return;
 
-  const path = TRAINING_CONFIG.backgroundImage.startsWith("./")
-    ? TRAINING_CONFIG.backgroundImage
-    : "./" + TRAINING_CONFIG.backgroundImage;
-
+  const path = resolveUrl(TRAINING_CONFIG.backgroundImage);
   const img = new Image();
   img.onload = () => { trainingBg.style.backgroundImage = "url(" + path + ")"; };
   img.onerror = () => {
@@ -74,10 +60,7 @@ function setBackground() {
 function setSilhouette() {
   if (!trainingCharacter || !TRAINING_CONFIG.silhouetteImage) return;
 
-  const path = TRAINING_CONFIG.silhouetteImage.startsWith("./")
-    ? TRAINING_CONFIG.silhouetteImage
-    : "./" + TRAINING_CONFIG.silhouetteImage;
-
+  const path = resolveUrl(TRAINING_CONFIG.silhouetteImage);
   const img = new Image();
   img.onload = () => { trainingCharacter.style.backgroundImage = "url(" + path + ")"; };
   img.onerror = () => { trainingCharacter.style.backgroundImage = "none"; };
@@ -175,11 +158,8 @@ function loadItem(index) {
 
   stopBoth();
 
-  const videoUrl = toAbsoluteUrl(item.video);
-  const audioUrl = toAbsoluteUrl(item.audio);
-  console.log("Training: document base =", getDocumentBase());
-  console.log("Training: item " + currentIndex + " video request URL =", videoUrl);
-  console.log("Training: item " + currentIndex + " audio request URL =", audioUrl);
+  const videoUrl = resolveUrl(item.video);
+  const audioUrl = resolveUrl(item.audio);
 
   if (trainingVideo) {
     trainingVideo.removeAttribute("src");
