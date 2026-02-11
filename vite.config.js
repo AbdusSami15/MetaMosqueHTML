@@ -1,7 +1,6 @@
 export default {
   root: ".",
-  // For GitHub Pages: if site is at user.github.io/RepoName/, set base: "/RepoName/"
-  base: "/",
+  base: process.env.NODE_ENV === "production" ? "/MetaMosqueHTML/" : "/",
   publicDir: "public",
   server: {
     port: 5173,
