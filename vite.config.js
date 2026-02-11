@@ -1,6 +1,12 @@
 export default {
   root: ".",
-  base: process.env.NODE_ENV === "production" ? "/MetaMosqueHTML/" : "/",
+  // Vercel sets VERCEL=1 and serves at root; GitHub Pages uses /MetaMosqueHTML/
+  base:
+    process.env.VERCEL === "1"
+      ? "/"
+      : process.env.NODE_ENV === "production"
+        ? "/MetaMosqueHTML/"
+        : "/",
   publicDir: "public",
   server: {
     port: 5173,

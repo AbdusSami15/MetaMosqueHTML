@@ -45,15 +45,21 @@ MetaMosqueHTML/
 ## Run locally
 
 1. Install [Node.js](https://nodejs.org/) if needed.
-2. Install dependencies:
+2. Install dependencies (run once; this creates `package-lock.json`):
    ```bash
    npm install
    ```
+   **Important for deploy:** Commit `package-lock.json` to the repo so Vercel and GitHub Actions use the same dependency versions. Do not commit `node_modules/` (it is in `.gitignore`).
 3. Start the dev server:
    ```bash
    npm run dev
    ```
 4. Open the URL shown (e.g. `http://localhost:5173`) in your browser.
+
+## Deploy (Vercel / GitHub Pages)
+
+- **Vercel:** Connect the repo; Vercel will run `npm run build` and serve `dist/`. Base URL is `/` (set automatically). Ensure `package-lock.json` is committed so installs are reproducible.
+- **GitHub Pages:** Use the GitHub Actions workflow (`.github/workflows/deploy-pages.yml`). In repo **Settings → Pages**, set **Source** to **GitHub Actions**. The site is built and deployed from `dist/` with base `/MetaMosqueHTML/`.
 
 ## Other scripts
 
