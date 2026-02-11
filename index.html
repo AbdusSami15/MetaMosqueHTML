@@ -187,7 +187,18 @@
       <canvas id="sceneCanvas"></canvas>
       <div class="sceneHint" id="sceneHint">Click to look around · WASD to move</div>
       <div class="sceneVideoOverlay hidden" id="sceneVideoOverlay">
-        <video id="sceneVideo" playsinline preload="metadata"></video>
+        <div class="sceneVideoFrame">
+          <div class="sceneVideoTitle" id="sceneVideoTitle">UMRAH: MAKKAH</div>
+          <div class="sceneVideoInner">
+            <video id="sceneVideo" playsinline preload="metadata"></video>
+          </div>
+        </div>
+        <div class="sceneVideoControls">
+          <button class="hudBtn" type="button" id="sceneVideoNext" aria-label="Next point">NEXT</button>
+          <button class="hudBtn" type="button" id="sceneVideoRestart" aria-label="Restart">RESTART</button>
+          <button class="hudBtn" type="button" id="sceneVideoPause" aria-label="Pause">PAUSE</button>
+          <button class="hudBtn" type="button" id="sceneVideoClose" aria-label="Close video">CLOSE</button>
+        </div>
         <audio id="sceneAudio" preload="metadata"></audio>
       </div>
       <button class="sceneBackBtn hudBtn" type="button" data-action="sceneBackToMenu" aria-label="Back to menu">BACK</button>
@@ -220,8 +231,8 @@
 
   </div>
 
+  <script type="module" src="./sceneRouter.js"></script>
   <script src="./main.js"></script>
   <script type="module" src="./training.js"></script>
-  <script type="module" src="./scene.js"></script>
 </body>
 </html>

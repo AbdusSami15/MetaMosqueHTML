@@ -142,8 +142,12 @@ document.addEventListener("click", (e) => {
       return;
     }
     if (action === "sceneBackToMenu") {
-      hide(sceneRoot);
-      show(mainMenu);
+      if (window.sceneRouter && typeof window.sceneRouter.exitScene === "function") {
+        window.sceneRouter.exitScene();
+      } else {
+        hide(sceneRoot);
+        show(mainMenu);
+      }
       return;
     }
     return;
@@ -173,12 +177,40 @@ window.addEventListener("keydown", (e) => {
 });
 
 window.addEventListener("metamosque:goToScene", function (e) {
-  hide(mainMenu);
+  const raw = e.detail && e.detail.sceneId;
+  const sceneId = (raw && String(raw).trim()) ? String(raw).trim() : "umrah_haram";
   hide(optionsScreen);
   hide(trainingRoot);
-  if (sceneRoot) show(sceneRoot);
-  window.dispatchEvent(new CustomEvent("metamosque:sceneReady", e));
+  if (window.sceneRouter && typeof window.sceneRouter.enterScene === "function") {
+    window.sceneRouter.enterScene(sceneId);
+  } else {
+    hide(mainMenu);
+    if (sceneRoot) show(sceneRoot);
+  }
 });
 
 initOptionsLogo();
 showMainMenu();
+// ================= LINKS (SOCIAL + POLICY + CONTACT) =================
+(function () {
+  const LINKS = {
+    facebook: "https://www.facebook.com/p/MetaMosque-100094183150899/",
+    instagram: "https://www.instagram.com/meta_mosque/",
+    youtube: "https://www.youtube.com/channel/UC9fQVXzzN3gM26XdSgTw6Rw",
+    privacy: "https://games.tecshield.io/terms-conditions/dbf760bc1fd1a28b2d40",
+    contact: "https://www.metamosque.com/"
+  };
+
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-action]");
+    if (!btn) return;
+
+    const action = btn.getAttribute("data-action");
+    const url = LINKS[action];
+    if (!url) return;
+
+    e.preventDefault();
+    window.open(url, "_blank", "noopener,noreferrer");
+  });
+})();
+

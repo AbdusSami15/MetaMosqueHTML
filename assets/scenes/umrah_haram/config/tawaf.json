@@ -1,0 +1,34 @@
+[
+  {
+    "id": "start",
+    "title": "Start Point",
+    "center": [-11.854, 0, -4.11],
+    "radius": 1.8,
+    "video": "media/videos/tawaf1.mp4",
+    "audio": "media/audio/tawaf1.mp3"
+  },
+  {
+    "id": "yameni",
+    "title": "Yameni Corner",
+    "center": [18.829, 0, 0.479],
+    "radius": 1.5,
+    "video": "media/videos/tawaf2.mp4",
+    "audio": "media/audio/tawaf2.mp3"
+  },
+  {
+    "id": "hajr_aswad",
+    "title": "Hajr-e-Aswad",
+    "center": [1.164, 0, -12.031],
+    "radius": 1.5,
+    "video": "media/videos/tawaf3.mp4",
+    "audio": "media/audio/tawaf3.mp3"
+  },
+  {
+    "id": "muqam_ibrahim",
+    "title": "Muqam-e-Ibrahim",
+    "center": [-10.981, 0, -1.057],
+    "radius": 2.0,
+    "video": "media/videos/tawaf4.mp4",
+    "audio": "media/audio/tawaf4.mp3"
+  }
+]

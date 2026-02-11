@@ -1,0 +1,10 @@
+{
+  "groundY": 0,
+  "cameraStart": [-22.071, 1.6, -12.152],
+  "model": {
+    "path": "media/models/haram.glb",
+    "scale": 1,
+    "position": [0, 0, 0],
+    "rotation": [0, 0, 0]
+  }
+}

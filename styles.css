@@ -63,6 +63,16 @@ html, body{
   padding: 6px 0 10px;
   flex: 0 0 auto;
 }
+.bismillahImg{
+  display: block;
+  margin: 0 auto 14px;
+  max-width: min(700px, 85vw);  /* width kam */
+  max-height: 120px;            /* 🔴 height kam */
+  height: auto;
+  object-fit: contain;
+  user-select: none;
+  pointer-events: none;
+}
 
 .topButtons{
   display:flex;
@@ -874,50 +884,233 @@ html, body{
   .trainingControls{ gap: 0.1em; padding: 2px 6px max(4px, env(safe-area-inset-bottom)); }
   .hudBtn{ padding: 6px 8px; font-size: 9px; letter-spacing: 0.4px; }
 }
-/* ===== OPTIONS: fix right side cut + keep one screen ===== */
-.optionsBody{
-  overflow: hidden !important;
-  /* safer 3-column layout (no clipping) */
-  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr) minmax(0, 0.85fr) !important;
-  gap: clamp(10px, 2vw, 22px) !important;
-  padding: clamp(10px, 1.6vw, 18px) !important;
-  align-items: center !important;
+
+/* ===== OPTIONS: fix right side cut on DESKTOP only (mobile uses stacked layout below) ===== */
+@media (min-width: 861px) {
+  .optionsBody{
+    overflow: hidden !important;
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr) minmax(0, 0.85fr) !important;
+    gap: clamp(10px, 2vw, 22px) !important;
+    padding: clamp(10px, 1.6vw, 18px) !important;
+    align-items: center !important;
+  }
+
+  .optionsRight{
+    width: 100% !important;
+    min-width: 0 !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .followUsPill{
+    width: 100% !important;
+    max-width: 240px !important;
+    text-align: center !important;
+    padding: 12px 18px !important;
+    font-size: clamp(12px, 1.6vw, 18px) !important;
+  }
+
+  .socialBtn{
+    width: clamp(56px, 7vw, 96px) !important;
+    height: clamp(56px, 7vw, 96px) !important;
+  }
+
+  .optionPill{
+    width: min(320px, 100%) !important;
+    padding: 12px 22px !important;
+    font-size: clamp(12px, 1.6vw, 18px) !important;
+  }
+
+  .optionsLeft, .optionsCenter, .optionsRight{
+    min-width: 0 !important;
+  }
 }
 
-/* Right column must never exceed its grid track */
-.optionsRight{
-  width: 100% !important;
-  min-width: 0 !important;
-  align-items: center !important;
-  justify-content: center !important;
+/* ================= OPTIONS: MOBILE RESPONSIVE (no cutting) ================= */
+@media (max-width: 860px) {
+  #optionsScreen.menuFrame {
+    overflow: hidden !important;
+    padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right)) max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)) !important;
+  }
+
+  #optionsScreen .menuInner.optionsInner {
+    min-height: 0 !important;
+    overflow: auto !important;
+    overflow-x: hidden !important;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px 12px 16px !important;
+  }
+
+  #optionsScreen .optionsTopRow {
+    flex-shrink: 0 !important;
+    grid-template-columns: 48px 1fr 48px !important;
+    padding: 6px 0 10px !important;
+  }
+
+  #optionsScreen .backBtn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  #optionsScreen .backIcon {
+    font-size: 22px !important;
+  }
+
+  #optionsScreen .optionsTitlePill {
+    padding: 8px 14px !important;
+    font-size: 14px !important;
+  }
+
+  #optionsScreen .optionsBody {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    grid-template-columns: unset !important;
+    gap: 16px !important;
+    padding: 10px 0 16px !important;
+    align-items: center !important;
+    overflow: visible !important;
+  }
+
+  #optionsScreen .optionsLeft {
+    width: 100% !important;
+    max-width: 280px !important;
+    align-items: center !important;
+    gap: 8px !important;
+    padding-left: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  #optionsScreen .optionPill {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+  }
+
+  #optionsScreen .optionsCenter {
+    width: 100% !important;
+    flex-shrink: 0 !important;
+  }
+
+  #optionsScreen .optionsLogoWrap {
+    width: min(180px, 45vw) !important;
+    max-width: 180px !important;
+  }
+
+  #optionsScreen .optionsRight {
+    width: 100% !important;
+    max-width: 280px !important;
+    align-items: center !important;
+    gap: 10px !important;
+    padding-right: 0 !important;
+    flex-shrink: 0 !important;
+  }
+
+  #optionsScreen .followUsPill {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 10px 14px !important;
+    font-size: 13px !important;
+    box-sizing: border-box !important;
+  }
+
+  #optionsScreen .socialBtn {
+    width: 48px !important;
+    height: 48px !important;
+    flex-shrink: 0 !important;
+  }
 }
 
-/* Follow-us pill should fit inside right column */
-.followUsPill{
-  width: 100% !important;
-  max-width: 240px !important;
-  text-align: center !important;
-  padding: 12px 18px !important;
-  font-size: clamp(12px, 1.6vw, 18px) !important;
+/* ================= OPTIONS: LANDSCAPE / LOW-HEIGHT (KEEP GRID, JUST SHRINK) ================= */
+/* This replaces the stacking that ruined your layout. */
+@media (min-width: 861px) and (max-height: 520px){
+
+  /* more usable height */
+  #optionsScreen.menuFrame{
+    padding: max(6px, env(safe-area-inset-top)) max(6px, env(safe-area-inset-right))
+             max(6px, env(safe-area-inset-bottom)) max(6px, env(safe-area-inset-left)) !important;
+  }
+
+  #optionsScreen .menuInner.optionsInner{
+    padding: 10px 12px 12px !important;
+    overflow: hidden !important; /* optionsBody handles scroll */
+  }
+
+  #optionsScreen .optionsTopRow{
+    grid-template-columns: 52px 1fr 52px !important;
+    padding: 4px 0 6px !important;
+  }
+
+  #optionsScreen .backBtn{
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 10px !important;
+  }
+
+  #optionsScreen .optionsTitlePill{
+    padding: 7px 14px !important;
+    font-size: 15px !important;
+    letter-spacing: 1px !important;
+  }
+
+  /* keep 3 columns, but tighter + scroll if needed */
+  #optionsScreen .optionsBody{
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr) minmax(0, 0.95fr) !important;
+    gap: 12px !important;
+    padding: 6px 4px 10px !important;
+    overflow: auto !important;
+    -webkit-overflow-scrolling: touch;
+    align-items: center !important;
+  }
+
+  #optionsScreen .optionsLeft{
+    gap: 10px !important;
+    align-items: flex-start !important;
+  }
+
+  #optionsScreen .optionPill{
+    width: min(300px, 100%) !important;
+    padding: 10px 18px !important;
+    font-size: 13px !important;
+    letter-spacing: .9px !important;
+  }
+
+  #optionsScreen .optionsLogoWrap{
+    width: min(210px, 26vh) !important; /* height-driven */
+  }
+
+  #optionsScreen .optionsRight{
+    gap: 10px !important;
+    align-items: center !important;
+    padding-right: 0 !important;
+  }
+
+  #optionsScreen .followUsPill{
+    width: 100% !important;
+    max-width: 220px !important;
+    text-align: center !important;
+    padding: 9px 14px !important;
+    font-size: 13px !important;
+  }
+
+  #optionsScreen .socialBtn{
+    width: 54px !important;
+    height: 54px !important;
+    box-shadow: 0 10px 18px rgba(0,0,0,.14) !important;
+  }
 }
 
-/* Social buttons smaller so they don't push layout */
-.socialBtn{
-  width: clamp(56px, 7vw, 96px) !important;
-  height: clamp(56px, 7vw, 96px) !important;
+/* Even tighter for very short landscape */
+@media (min-width: 861px) and (max-height: 420px){
+  #optionsScreen .optionsLogoWrap{ width: min(180px, 22vh) !important; }
+  #optionsScreen .socialBtn{ width: 48px !important; height: 48px !important; }
+  #optionsScreen .optionPill{ padding: 9px 16px !important; font-size: 12px !important; }
+  #optionsScreen .followUsPill{ padding: 8px 12px !important; font-size: 12px !important; }
 }
 
-/* Keep left pills slightly smaller to help fit */
-.optionPill{
-  width: min(320px, 100%) !important;
-  padding: 12px 22px !important;
-  font-size: clamp(12px, 1.6vw, 18px) !important;
-}
-
-/* Prevent any child from causing horizontal overflow */
-.optionsLeft, .optionsCenter, .optionsRight{
-  min-width: 0 !important;
-}
 /* =========================================================
    MAIN MENU (ONLY): keep SAME 5x2 layout on mobile WITHOUT CUT
    Paste at END of styles.css
@@ -925,12 +1118,10 @@ html, body{
 
 @media (max-width: 860px){
 
-  /* Reduce inner padding so content gets more height */
   #mainMenu .menuInner{
     padding: 10px !important;
   }
 
-  /* Title + top buttons take less vertical space */
   #mainMenu .topCalligraphy{
     padding: 2px 0 4px !important;
     margin: 0 !important;
@@ -947,7 +1138,6 @@ html, body{
     width: calc(100% / .85) !important;
   }
 
-  /* Grid stays 5 columns, 2 rows, NO scroll */
   #mainMenu .grid{
     overflow: hidden !important;
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
@@ -961,7 +1151,6 @@ html, body{
     align-items: stretch !important;
   }
 
-  /* Tile layout: stable icon area + stable label area */
   #mainMenu .tile{
     width: 100% !important;
     max-width: none !important;
@@ -975,13 +1164,11 @@ html, body{
     overflow: visible !important;
   }
 
-  /* IMPORTANT: kill height:100% behavior so icon never gets clipped */
   #mainMenu .tileIcon{
     height: auto !important;
     width: 100% !important;
     max-width: 100% !important;
 
-    /* Hard cap so top/bottom never cuts */
     max-height: 56px !important;
 
     object-fit: contain !important;
@@ -989,11 +1176,9 @@ html, body{
 
     margin: 0 auto 4px !important;
 
-    /* optional perf: remove heavy shadow on mobile */
     filter: none !important;
   }
 
-  /* Labels: 2 lines max, never cut */
   #mainMenu .tileLabel{
     width: 100% !important;
     padding: 0 4px !important;
@@ -1012,7 +1197,6 @@ html, body{
     text-align: center !important;
   }
 
-  /* Remove hint to free height (prevents bottom cutting) */
   #mainMenu .footerHint{ display: none !important; }
 }
 
@@ -1066,18 +1250,99 @@ html, body{
   position: absolute;
   inset: 0;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 0;
+  padding: 2% 22% 6% 2%;
+  box-sizing: border-box;
   background: rgba(0,0,0,.7);
   z-index: 2;
+  pointer-events: auto;
 }
 
 .sceneVideoOverlay.hidden{ display: none !important; }
 
-.sceneVideoOverlay video{
-  max-width: 90%;
-  max-height: 90%;
-  object-fit: contain;
+.sceneVideoFrame{
+  width: 100%;
+  max-width: min(90vw, 90vh * 16/9);
+  height: 70%;
+  max-height: min(70vh, 70vw * 9/16);
+  min-width: 0;
+  min-height: 0;
+  aspect-ratio: 16 / 9;
+  border-radius: 8px;
+  overflow: hidden;
+  position: relative;
+  background: #000;
+  box-sizing: border-box;
+  box-shadow:
+    0 2px 0 rgba(255,235,180,.5),
+    0 4px 0 #8a6912,
+    0 6px 0 #6b5010,
+    inset 0 1px 0 rgba(255,245,220,.7),
+    inset 0 -1px 0 rgba(80,55,10,.4),
+    0 16px 40px rgba(0,0,0,.35);
+}
+
+.sceneVideoFrame::before{
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-radius: 8px;
+  border-top-color: rgba(255,235,180,.6);
+  border-left-color: rgba(220,180,80,.5);
+  border-bottom-color: rgba(90,65,15,.7);
+  border-right-color: rgba(120,85,20,.6);
+  pointer-events: none;
+  box-sizing: border-box;
+  z-index: 1;
+}
+
+.sceneVideoTitle{
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 8px 12px;
+  background: rgba(0,0,0,.6);
+  color: #fff;
+  font-size: clamp(12px, 1.8vw, 18px);
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.sceneVideoInner{
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.sceneVideoOverlay .sceneVideoInner video{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sceneVideoControls{
+  width: 100%;
+  max-width: min(90vw, 90vh * 16/9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: nowrap;
+  gap: 0.1em;
+  padding: 2px 0 max(6px, env(safe-area-inset-bottom));
+  min-height: 0;
+}
+
+.sceneVideoControls .hudBtn{
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 8em;
 }
 
 .sceneBackBtn{
@@ -1086,4 +1351,3 @@ html, body{
   left: max(12px, env(safe-area-inset-left));
   z-index: 3;
 }
-

@@ -1,0 +1,32 @@
+export async function loadTriggers(basePath) {
+  const url = `${basePath}config/triggers.json`;
+  const res = await fetch(url);
+  if (!res.ok) return [];
+  const data = await res.json();
+  return Array.isArray(data) ? data : [];
+}
+
+export function isInsideTrigger(pos, t) {
+  const min = t.min;
+  const max = t.max;
+  return (
+    pos.x >= min[0] && pos.x <= max[0] &&
+    pos.y >= min[1] && pos.y <= max[1] &&
+    pos.z >= min[2] && pos.z <= max[2]
+  );
+}
+
+export function getTriggerIndex(triggers, pos) {
+  return triggers.findIndex((t) => isInsideTrigger(pos, t));
+}
+
+export function getTriggerCenter(t) {
+  if (!t || !t.min || !t.max) return null;
+  const min = t.min;
+  const max = t.max;
+  return {
+    x: (min[0] + max[0]) / 2,
+    y: (min[1] + max[1]) / 2,
+    z: (min[2] + max[2]) / 2,
+  };
+}

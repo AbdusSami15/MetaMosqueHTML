@@ -1,13 +1,26 @@
-const NEXT_SCENE_NAME = "NEXT SCENE";
+const NEXT_SCENE_NAME = "SCENE";
+
+/** Root = folder containing index.html (same as ./ in HTML). Works for / or /subfolder/ */
+function getDocumentBase() {
+  const u = window.location.href.replace(/[#?].*$/, "");
+  return u.endsWith("/") ? u : u.replace(/\/[^/]*$/, "/");
+}
+
+function toAbsoluteUrl(path) {
+  if (!path) return path;
+  if (path.startsWith("http://") || path.startsWith("https://")) return path;
+  const pathNorm = path.startsWith("/") ? path.slice(1) : path;
+  return new URL(pathNorm, getDocumentBase()).href;
+}
 
 const TRAINING_CONFIG = {
   backgroundImage: "assets/bg/training_room_bg.jpg",
   backgroundFallbackColor: "#2a2520",
   silhouetteImage: "assets/ui/training_silhouette.png",
   playlist: [
-    { video: "./assets/media/videos/umrah/Kaba video compressed.mp4", audio: "./assets/media/audio/umrah/UmrahNiyatFinal.mp3" },
-    { video: "./assets/media/videos/umrah/Ahram.mp4", audio: "./assets/media/audio/umrah/Ahram.mp3" },
-    { video: "./assets/media/videos/umrah/Talbiyah.mp4", audio: "./assets/media/audio/umrah/LabbaikBg.mp3" },
+    { video: "assets/media/videos/umrah/Kaba video compressed.mp4", audio: "assets/media/audio/umrah/UmrahNiyatFinal.mp3" },
+    { video: "assets/media/videos/umrah/Ahram.mp4", audio: "assets/media/audio/umrah/Ahram.mp3" },
+    { video: "assets/media/videos/umrah/Talbiyah.mp4", audio: "assets/media/audio/umrah/LabbaikBg.mp3" },
   ],
 };
 
@@ -155,33 +168,91 @@ function resumeBoth() {
 
 function loadItem(index) {
   const list = TRAINING_CONFIG.playlist;
-  if (!list.length) return;
+  if (!list.length) return Promise.resolve({ ok: true });
 
   currentIndex = Math.max(0, Math.min(index, list.length - 1));
   const item = list[currentIndex];
 
   stopBoth();
 
+  const videoUrl = toAbsoluteUrl(item.video);
+  const audioUrl = toAbsoluteUrl(item.audio);
+  console.log("Training: document base =", getDocumentBase());
+  console.log("Training: item " + currentIndex + " video request URL =", videoUrl);
+  console.log("Training: item " + currentIndex + " audio request URL =", audioUrl);
+
   if (trainingVideo) {
-    trainingVideo.src = item.video;
+    trainingVideo.removeAttribute("src");
     trainingVideo.load();
-    trainingVideo.preload = "metadata";
+    trainingVideo.muted = true;
+    trainingVideo.preload = "auto";
     trainingVideo.loop = true;
+    trainingVideo.src = videoUrl;
+    trainingVideo.load();
   }
 
   if (trainingAudio) {
-    trainingAudio.src = item.audio;
+    trainingAudio.removeAttribute("src");
     trainingAudio.load();
-    trainingAudio.preload = "metadata";
+    trainingAudio.preload = "auto";
+    trainingAudio.src = audioUrl;
+    trainingAudio.load();
   }
 
   forceHideTapOverlay();
+
+  return new Promise((resolve) => {
+    if (!trainingVideo || !trainingAudio) {
+      resolve({ ok: true });
+      return;
+    }
+    /* Always wait for new source: do not use readyState (it can be from previous item) */
+    let videoReady = false;
+    let audioReady = false;
+    let loadFailed = false;
+
+    function tryResolve() {
+      if (!videoReady || !audioReady) return;
+      trainingVideo.removeEventListener("loadeddata", onVideoReady);
+      trainingVideo.removeEventListener("error", onVideoError);
+      trainingAudio.removeEventListener("canplaythrough", onAudioReady);
+      trainingAudio.removeEventListener("error", onAudioError);
+      resolve({ ok: !loadFailed });
+    }
+
+    function onVideoReady() {
+      videoReady = true;
+      tryResolve();
+    }
+    function onAudioReady() {
+      audioReady = true;
+      tryResolve();
+    }
+    function onVideoError(e) {
+      console.warn("Training: video load failed for item " + currentIndex + ":", item.video, e);
+      loadFailed = true;
+      videoReady = true;
+      tryResolve();
+    }
+    function onAudioError(e) {
+      console.warn("Training: audio load failed for item " + currentIndex + ":", item.audio, e);
+      loadFailed = true;
+      audioReady = true;
+      tryResolve();
+    }
+
+    trainingVideo.addEventListener("loadeddata", onVideoReady, { once: true });
+    trainingVideo.addEventListener("error", onVideoError, { once: true });
+    trainingAudio.addEventListener("canplaythrough", onAudioReady, { once: true });
+    trainingAudio.addEventListener("error", onAudioError, { once: true });
+  });
 }
 
 function nextStep() {
   if (currentIndex >= TRAINING_CONFIG.playlist.length - 1) return;
-  loadItem(currentIndex + 1);
-  playBothFromStart();
+  loadItem(currentIndex + 1).then((result) => {
+    if (result && result.ok) playBothFromStart();
+  });
 }
 
 function restartStep() {
@@ -202,8 +273,6 @@ function togglePause() {
 
 /* UPDATED: skip becomes "scene button" and stays disabled until all finished */
 function skipTraining() {
-  if (!allFinished) return;
-
   pendingGo = true;
 
   // show loading then show OK panel (if overlays exist)
@@ -249,22 +318,17 @@ if (disclaimerOk) {
   });
 }
 
-/* Audio end => stop video too + auto-next until last, then unlock skip */
+/* Audio end => stop video; do NOT auto-play next. Only last item unlocks skip. */
 if (trainingAudio) {
   trainingAudio.addEventListener("ended", () => {
     stopBoth();
 
     const isLast = currentIndex >= (TRAINING_CONFIG.playlist.length - 1);
-    if (!isLast) {
-      // auto move to next item
-      loadItem(currentIndex + 1);
-      playBothFromStart();
-      return;
+    if (isLast) {
+      allFinished = true;
+      setSkipState(true);
     }
-
-    // last finished => unlock skip button
-    allFinished = true;
-    setSkipState(true);
+    /* Next video/audio only when user clicks NEXT */
   });
 }
 
@@ -298,12 +362,12 @@ window.addEventListener("metamosque:startTraining", (e) => {
 
   // apply to skip button
   setSkipLabel(nextSceneName);
-  setSkipState(false);
+  setSkipState(true);
 
-  loadItem(0);
   if (trainingRoot) trainingRoot.classList.remove("hidden");
-
-  playBothFromStart();
+  loadItem(0).then((result) => {
+    if (result && result.ok) playBothFromStart();
+  });
 });
 
 window.addEventListener("metamosque:exitTraining", () => {
