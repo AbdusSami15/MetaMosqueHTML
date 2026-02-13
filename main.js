@@ -3,6 +3,8 @@ function assetUrl(rel) {
   return (typeof window !== "undefined" && window.resolveAssetUrl) ? window.resolveAssetUrl(rel) : (rel.startsWith("./") ? rel : "./" + rel);
 }
 
+
+
 const mainMenu = document.getElementById("mainMenu");
 const optionsScreen = document.getElementById("optionsScreen");
 const optionsLogoImg = document.getElementById("optionsLogoImg");

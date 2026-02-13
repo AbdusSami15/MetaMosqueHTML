@@ -2,7 +2,19 @@
   "name": "metamosque",
   "version": "1.0.0",
   "private": true,
+  "description": "Run the project via a local HTTP server (required for modules and media to work; `file://` is blocked by CORS).",
+  "homepage": "https://github.com/AbdusSami15/MetaMosqueHTML#readme",
+  "bugs": {
+    "url": "https://github.com/AbdusSami15/MetaMosqueHTML/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AbdusSami15/MetaMosqueHTML.git"
+  },
+  "license": "ISC",
+  "author": "",
   "type": "module",
+  "main": "main.js",
   "scripts": {
     "dev": "vite",
     "dev:static": "serve . -p 5500",
@@ -12,9 +24,5 @@
   },
   "dependencies": {
     "three": "^0.160.0"
-  },
-  "devDependencies": {
-    "vite": "^5.4.0",
-    "serve": "^14.2.0"
   }
 }

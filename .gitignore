@@ -9,6 +9,7 @@ dist/
 .env.local
 *.local
 .DS_Store
+.zip
 
 # Logs
 *.log
