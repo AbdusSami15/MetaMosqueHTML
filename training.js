@@ -6,6 +6,8 @@ const TRAINING_CONFIG = {
   backgroundImage: "assets/bg/training_room_bg.jpg",
   backgroundFallbackColor: "#2a2520",
   silhouetteImage: "assets/ui/training_silhouette.png",
+  /** 4th audio played after last playlist item; SCENE button enables when this ends */
+  nextStepAudio: "assets/media/audio/umrah/NextStep.mp3",
   playlist: [
     { video: "assets/media/videos/umrah/Kaba video compressed.mp4", audio: "assets/media/audio/umrah/UmrahNiyatFinal.mp3" },
     { video: "assets/media/videos/umrah/Ahram.mp4", audio: "assets/media/audio/umrah/Ahram.mp3" },
@@ -229,7 +231,21 @@ function loadItem(index) {
 }
 
 function nextStep() {
-  if (currentIndex >= TRAINING_CONFIG.playlist.length - 1) return;
+  const isLast = currentIndex >= TRAINING_CONFIG.playlist.length - 1;
+  if (isLast) {
+    /* Stop 3rd video/audio, then play NextStep; when it ends, enable SCENE button */
+    stopBoth();
+    const nextStepSrc = TRAINING_CONFIG.nextStepAudio && resolveUrl(TRAINING_CONFIG.nextStepAudio);
+    if (nextStepSrc) {
+      const nextStepEl = new Audio(nextStepSrc);
+      nextStepEl.onended = () => setSkipState(true);
+      nextStepEl.onerror = () => setSkipState(true);
+      nextStepEl.play().catch(() => setSkipState(true));
+    } else {
+      setSkipState(true);
+    }
+    return;
+  }
   loadItem(currentIndex + 1).then((result) => {
     if (result && result.ok) playBothFromStart();
   });
@@ -298,17 +314,12 @@ if (disclaimerOk) {
   });
 }
 
-/* Audio end => stop video; do NOT auto-play next. Only last item unlocks skip. */
+/* Audio end => stop video. NextStep plays only when user clicks NEXT on last item. */
 if (trainingAudio) {
   trainingAudio.addEventListener("ended", () => {
     stopBoth();
-
     const isLast = currentIndex >= (TRAINING_CONFIG.playlist.length - 1);
-    if (isLast) {
-      allFinished = true;
-      setSkipState(true);
-    }
-    /* Next video/audio only when user clicks NEXT */
+    if (isLast) allFinished = true;
   });
 }
 
@@ -340,9 +351,9 @@ window.addEventListener("metamosque:startTraining", (e) => {
   nextSceneName = (d && typeof d.nextSceneName === "string") ? d.nextSceneName : NEXT_SCENE_NAME;
   nextSceneId = (d && typeof d.nextSceneId === "string") ? d.nextSceneId : "";
 
-  // apply to skip button
+  // apply to skip button: disabled until last audio has finished
   setSkipLabel(nextSceneName);
-  setSkipState(true);
+  setSkipState(false);
 
   if (trainingRoot) trainingRoot.classList.remove("hidden");
   loadItem(0).then((result) => {

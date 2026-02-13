@@ -1,0 +1,12 @@
+{
+  "groundY": 0,
+  "cameraStart": [0, 1.6, 5],
+  "cameraLookAt": [0, 1.6, -25],
+  "model": {
+    "path": "media/models/safa_marwah.glb",
+    "scale": 1,
+    "position": [0, 0, 0],
+    "rotation": [0, 0, 0],
+    "floorOffset": 8
+  }
+}

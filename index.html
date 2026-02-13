@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>MetaMosque</title>
-  <!-- Base path for static hosts: set window.__BASE_PATH__ before this to override (e.g. GitHub Pages). -->
+
+  <!-- Base path for static hosts -->
   <script>
     (function(){
       var base = window.__BASE_PATH__;
@@ -23,6 +24,7 @@
       document.head.appendChild(el);
     })();
   </script>
+
   <script type="importmap">
   {
     "imports": {
@@ -31,8 +33,10 @@
     }
   }
   </script>
+
   <link rel="stylesheet" href="./styles.css" />
 </head>
+
 <body>
   <div class="app">
 
@@ -205,6 +209,21 @@
     <div class="sceneRoot hidden" id="sceneRoot">
       <canvas id="sceneCanvas"></canvas>
       <div class="sceneHint" id="sceneHint">Click to look around · WASD to move</div>
+
+      <!-- ✅ NEW: Dua panel for FIRST NEXT click (Haram only) -->
+      <aside class="duaSidePanel hidden" id="duaSidePanel" aria-hidden="true">
+        <div class="duaSideFrame">
+          <div class="duaSideTitle" id="duaSideTitle">—</div>
+          <div class="duaSideArabic" id="duaSideArabic" dir="rtl" lang="ar"></div>
+          <div class="duaSideLatin" id="duaSideLatin"></div>
+
+          <div class="duaSideActions">
+            <button class="hudBtn" type="button" id="duaSideOk">OK</button>
+          </div>
+        </div>
+        <audio id="duaSideAudio" preload="metadata"></audio>
+      </aside>
+
       <div class="sceneVideoOverlay hidden" id="sceneVideoOverlay">
         <div class="sceneVideoFrame">
           <div class="sceneVideoTitle" id="sceneVideoTitle">UMRAH: MAKKAH</div>
@@ -212,14 +231,28 @@
             <video id="sceneVideo" playsinline preload="metadata"></video>
           </div>
         </div>
+
         <div class="sceneVideoControls">
           <button class="hudBtn" type="button" id="sceneVideoNext" aria-label="Next point">NEXT</button>
           <button class="hudBtn" type="button" id="sceneVideoRestart" aria-label="Restart">RESTART</button>
           <button class="hudBtn" type="button" id="sceneVideoPause" aria-label="Pause">PAUSE</button>
-          <button class="hudBtn" type="button" id="sceneVideoClose" aria-label="Close video">CLOSE</button>
+
+          <button
+            class="hudBtn hudBtnDisabled"
+            type="button"
+            id="sceneNextSceneBtn"
+            data-action="sceneNextScene"
+            disabled
+            aria-disabled="true"
+            aria-label="Next scene"
+          >
+            SCENE
+          </button>
         </div>
+
         <audio id="sceneAudio" preload="metadata"></audio>
       </div>
+
       <button class="sceneBackBtn hudBtn" type="button" data-action="sceneBackToMenu" aria-label="Back to menu">BACK</button>
     </div>
 

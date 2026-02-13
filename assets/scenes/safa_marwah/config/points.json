@@ -1,0 +1,18 @@
+[
+  {
+    "id": "safa",
+    "title": "Safa",
+    "center": [0, 0, 5],
+    "radius": 1.6,
+    "video": "media/videos/safa1.mp4",
+    "audio": "media/audio/safa1.mp3"
+  },
+  {
+    "id": "marwah",
+    "title": "Marwah",
+    "center": [0, 0, -5],
+    "radius": 1.6,
+    "video": "media/videos/marwah1.mp4",
+    "audio": "media/audio/marwah1.mp3"
+  }
+]

@@ -1,6 +1,6 @@
 // index.js (FULL REPLACE)
-// Tawaf: always-on NEXT (can skip anytime), no CLOSE button, beam marker (particle-like),
-// media playback with movement lock on trigger, Restart/Pause buttons wired.
+// ✅ NEW: FIRST NEXT click shows Dua side panel + plays audio (Haram only)
+// After that, NEXT behaves as before (advance tawaf points).
 
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
@@ -37,10 +37,53 @@ let moveRight = false;
 let ctx = null;
 let groundY = 0;
 
-// Marker (beam) instead of black box
+// Marker (beam)
 let tawafBeam = null;
 let tawafGlow = null;
 let tawafRing = null;
+
+// Demo character
+let demoCharacter = null;
+let demoCharacterWalkTarget = null;
+let demoCharacterWalking = false;
+const DEMO_CHARACTER_WALK_SPEED = 2.0;
+
+// Kaaba boundary
+const KAABA_HALF_X = 9;
+const KAABA_HALF_Z = 9;
+const KAABA_MARGIN = 2;
+const HATEEM_RADIUS = 14;
+const HATEEM_HALF = -1;
+let demoCharacterArcWalk = null;
+
+// ✅ Dua UI state
+let haramDuaShown = false;
+let duaUi = null;
+
+function clampToOutsideKaaba(x, z) {
+  const L = -KAABA_HALF_X - KAABA_MARGIN;
+  const R = KAABA_HALF_X + KAABA_MARGIN;
+  const B = -KAABA_HALF_Z - KAABA_MARGIN;
+  const T = KAABA_HALF_Z + KAABA_MARGIN;
+  let out = { x, z };
+
+  if (x >= L && x <= R && z >= B && z <= T) {
+    const dR = R - x, dL = x - L, dT = T - z, dB = z - B;
+    const minD = Math.min(dR, dL, dT, dB);
+    if (minD === dR) out = { x: R, z };
+    else if (minD === dL) out = { x: L, z };
+    else if (minD === dT) out = { x, z: T };
+    else out = { x, z: B };
+  }
+
+  const r = Math.sqrt(out.x * out.x + out.z * out.z);
+  const inHateemHalf = (HATEEM_HALF === -1 && out.x <= 0) || (HATEEM_HALF === 1 && out.x >= 0);
+  if (inHateemHalf && r < HATEEM_RADIUS && r > 1e-6) {
+    const scale = HATEEM_RADIUS / r;
+    out = { x: out.x * scale, z: out.z * scale };
+  }
+  return out;
+}
 
 function resolveUrl(basePath, relPath) {
   if (!basePath) return relPath;
@@ -94,6 +137,34 @@ function snapModelToGround(root, groundYLocal = 0) {
   root.position.y += offset;
 }
 
+function createDemoCharacter() {
+  const group = new THREE.Group();
+  group.name = "demoCharacter";
+
+  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9, metalness: 0.05 });
+  const headMat = new THREE.MeshStandardMaterial({ color: 0xe8c4a0, roughness: 0.9, metalness: 0.05 });
+
+  const bodyHeight = 1.6;
+  const bodyRadius = 0.35;
+  const body = new THREE.Mesh(
+    new THREE.CapsuleGeometry(bodyRadius, bodyHeight - 2 * bodyRadius, 8, 16),
+    bodyMat
+  );
+  body.castShadow = true;
+  body.receiveShadow = true;
+  body.position.y = bodyHeight / 2;
+  group.add(body);
+
+  const headRadius = 0.28;
+  const head = new THREE.Mesh(new THREE.SphereGeometry(headRadius, 16, 12), headMat);
+  head.castShadow = true;
+  head.receiveShadow = true;
+  head.position.y = bodyHeight + headRadius;
+  group.add(head);
+
+  return group;
+}
+
 function loadHaramModel(sceneThree, basePath) {
   return new Promise((resolve) => {
     const loader = new GLTFLoader();
@@ -129,7 +200,6 @@ function loadHaramModel(sceneThree, basePath) {
   });
 }
 
-// NEXT must always be visible
 function setNextVisible() {
   if (!ctx?.nextBtn) return;
   ctx.nextBtn.classList.remove("hidden");
@@ -146,7 +216,6 @@ function unlockMovement() {
 }
 
 function createTawafBeam() {
-  // Inner animated beam
   const beamGeometry = new THREE.CylinderGeometry(1.45, 1.45, 6, 36, 1, true);
   const beamMaterial = new THREE.ShaderMaterial({
     transparent: true,
@@ -193,7 +262,6 @@ function createTawafBeam() {
   tawafBeam.position.y = groundY + 3;
   scene.add(tawafBeam);
 
-  // Outer glow aura (this is the "outer wall" width)
   const glowGeometry = new THREE.CylinderGeometry(2.6, 2.6, 6.2, 36, 1, true);
   const glowMaterial = new THREE.MeshBasicMaterial({
     color: 0x00ff66,
@@ -207,7 +275,6 @@ function createTawafBeam() {
   tawafGlow.position.y = groundY + 3;
   scene.add(tawafGlow);
 
-  // Ground ring
   const ringGeo = new THREE.RingGeometry(1.2, 2.0, 64);
   const ringMat = new THREE.MeshBasicMaterial({
     color: 0x00ff66,
@@ -248,34 +315,43 @@ function updateTawafMarker() {
 }
 
 function beginStep(point) {
-  // On collide: lock player and play media
   tawafMediaLocked = true;
   lockMovement();
 
   if (ctx?.hint) ctx.hint.textContent = `${point.title} (Reached)`;
-  console.log("[Tawaf] Enter:", point.id);
+
+  const isLastPoint = tawafPoints.length > 0 && activeTawafIndex === tawafPoints.length - 1;
+  if (isLastPoint) setNextSceneButton();
 
   if (point.video || point.audio) {
     playTriggerMedia(ctx, point, {
       onEnded: () => {
-        // NEXT is always available, so we just show status.
-        // If you want movement to unlock automatically after audio ends, call unlockMovement() here.
         if (ctx?.hint) ctx.hint.textContent = `${point.title} (Done)`;
+        if (isLastPoint) setNextSceneButton();
       },
     });
   } else {
     if (ctx?.hint) ctx.hint.textContent = `${point.title} (Done)`;
+    if (isLastPoint) setNextSceneButton();
   }
 }
 
-// NEXT: always works anytime (even during locked / media playing)
+function setNextSceneButton() {
+  if (!ctx?.nextBtn) return;
+  ctx.nextBtn.textContent = "Next scene";
+  ctx.nextBtn.onclick = () => {
+    if (typeof window.sceneRouter !== "undefined") {
+      window.sceneRouter.exitScene();
+      window.sceneRouter.enterScene("safa_marwah");
+    }
+  };
+}
+
 function advanceTawaf() {
   if (tawafComplete || tawafPoints.length === 0) return;
 
-  // Optional sfx on Next
   playSfx(ctx.basePath, "media/audio/NextStep.mp3", 1);
 
-  // Stop current media + unlock immediately
   stopTriggerMedia(ctx);
   tawafMediaLocked = false;
   unlockMovement();
@@ -286,25 +362,154 @@ function advanceTawaf() {
     tawafComplete = true;
     if (ctx?.hint) ctx.hint.textContent = "Tawaf Complete";
     updateTawafMarker();
+    demoCharacterWalking = false;
+    demoCharacterWalkTarget = null;
+    demoCharacterArcWalk = null;
+    setNextSceneButton();
     return;
   }
 
   if (ctx?.hint) ctx.hint.textContent = tawafPoints[activeTawafIndex].title;
   updateTawafMarker();
+
+  if (demoCharacter && tawafPoints[activeTawafIndex]) {
+    const nextCenter = getTawafPointCenter(tawafPoints[activeTawafIndex]);
+    if (nextCenter) {
+      const pos = demoCharacter.position;
+      const nextClamp = clampToOutsideKaaba(nextCenter.x, nextCenter.z);
+      const tx = nextClamp.x;
+      const tz = nextClamp.z;
+
+      const startClamp = clampToOutsideKaaba(pos.x, pos.z);
+      const startAngle = Math.atan2(startClamp.x, startClamp.z);
+      const endAngle = Math.atan2(tx, tz);
+
+      let totalAngle = (endAngle - startAngle + 2 * Math.PI) % (2 * Math.PI);
+      if (totalAngle < 1e-6) totalAngle = 2 * Math.PI;
+
+      const r1 = Math.sqrt(startClamp.x * startClamp.x + startClamp.z * startClamp.z);
+      const r2 = Math.sqrt(tx * tx + tz * tz);
+      const avgR = (r1 + r2) * 0.5;
+      const totalTime = (totalAngle * Math.max(avgR, 1)) / DEMO_CHARACTER_WALK_SPEED;
+
+      demoCharacterWalkTarget = new THREE.Vector3(tx, groundY, tz);
+      demoCharacterArcWalk = {
+        startAngle,
+        totalAngle,
+        r1,
+        r2,
+        totalTime: Math.max(0.5, totalTime),
+        t: 0,
+      };
+
+      demoCharacter.position.set(startClamp.x, groundY, startClamp.z);
+      demoCharacterWalking = true;
+    }
+  }
+}
+
+// ✅ Dua helpers
+async function loadHaramDua(basePath) {
+  try {
+    const res = await fetch(`${basePath}config/haram_dua.json`, { cache: "no-store" });
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (_) {
+    return null;
+  }
+}
+
+function initDuaUiOnce() {
+  if (duaUi) return duaUi;
+  const panel = document.getElementById("duaSidePanel");
+  const titleEl = document.getElementById("duaSideTitle");
+  const arEl = document.getElementById("duaSideArabic");
+  const laEl = document.getElementById("duaSideLatin");
+  const okBtn = document.getElementById("duaSideOk");
+  const audioEl = document.getElementById("duaSideAudio");
+
+  duaUi = { panel, titleEl, arEl, laEl, okBtn, audioEl, data: null };
+
+  if (okBtn) {
+    okBtn.onclick = () => {
+      hideDuaPanel();
+    };
+  }
+
+  return duaUi;
+}
+
+function showDuaPanel(data) {
+  const ui = initDuaUiOnce();
+  if (!ui?.panel) return;
+
+  ui.data = data;
+
+  if (ui.titleEl) ui.titleEl.textContent = data?.title || "Dua";
+  if (ui.arEl) ui.arEl.textContent = data?.arabic || "";
+  if (ui.laEl) ui.laEl.textContent = data?.latin || "";
+
+  ui.panel.classList.remove("hidden");
+  ui.panel.setAttribute("aria-hidden", "false");
+
+  // Play audio (user gesture = NEXT click)
+  if (ui.audioEl && data?.audio) {
+    const src = resolveUrl(ctx?.basePath || "", data.audio);
+    ui.audioEl.pause();
+    ui.audioEl.currentTime = 0;
+    if (ui.audioEl.src !== src) ui.audioEl.src = src;
+    ui.audioEl.play().catch(() => {});
+  }
+}
+
+function hideDuaPanel() {
+  const ui = initDuaUiOnce();
+  if (!ui?.panel) return;
+
+  ui.panel.classList.add("hidden");
+  ui.panel.setAttribute("aria-hidden", "true");
+
+  if (ui.audioEl) {
+    ui.audioEl.pause();
+  }
+}
+
+async function showDuaOnce() {
+  if (haramDuaShown) return false;
+  haramDuaShown = true;
+
+  const ui = initDuaUiOnce();
+  if (!ui) return false;
+
+  // Load config once
+  if (!ui.data) ui.data = await loadHaramDua(ctx.basePath);
+
+  // If config missing, don't block gameplay
+  if (!ui.data) return false;
+
+  showDuaPanel(ui.data);
+  return true;
 }
 
 function onKeyDown(e) {
-  // Always allow NEXT (E) and Pause (Space)
   if (e.code === "KeyE") {
+    // E = Next
+    if (!haramDuaShown) {
+      // Show dua on first "Next"
+      showDuaOnce().then((didShow) => {
+        if (!didShow) advanceTawaf();
+      });
+      return;
+    }
     advanceTawaf();
     return;
   }
+
   if (e.code === "Space") {
     togglePauseTriggerMedia(ctx);
     return;
   }
 
-  // Movement keys ignored while locked
   if (movementLocked) return;
 
   if (e.code === "KeyW") moveForward = true;
@@ -322,11 +527,12 @@ function onKeyUp(e) {
 
 function tick() {
   requestAnimationFrame(tick);
+  if (!renderer || !scene) return;
 
-  // Animate marker (cheap)
   if (tawafBeam?.material?.uniforms) {
     tawafBeam.material.uniforms.uTime.value += 0.016;
   }
+
   if (tawafRing) {
     tawafRing.rotation.z += 0.01;
     const t = tawafBeam?.material?.uniforms?.uTime?.value ?? 0;
@@ -355,11 +561,48 @@ function tick() {
     camera.position.y = groundY + 1.6;
   }
 
-  // Trigger detection (collide)
   if (!tawafComplete && tawafPoints.length > 0) {
     const point = tawafPoints[activeTawafIndex];
     if (isInsideTawafPoint(point, camera.position) && !tawafMediaLocked) {
       beginStep(point);
+    }
+  }
+
+  if (demoCharacter) {
+    if (demoCharacterWalking && demoCharacterWalkTarget && demoCharacterArcWalk) {
+      const pos = demoCharacter.position;
+      const arc = demoCharacterArcWalk;
+      const dt = 0.016;
+
+      arc.t += dt / arc.totalTime;
+      const t = Math.min(1, arc.t);
+
+      const angle = arc.startAngle + arc.totalAngle * t;
+      const r = arc.r1 + (arc.r2 - arc.r1) * t;
+
+      let px = r * Math.sin(angle);
+      let pz = r * Math.cos(angle);
+
+      const c = clampToOutsideKaaba(px, pz);
+      pos.x = c.x;
+      pos.z = c.z;
+      pos.y = groundY;
+
+      demoCharacter.rotation.y = Math.atan2(-pos.x, pos.z);
+
+      if (arc.t >= 1) {
+        demoCharacterWalking = false;
+        demoCharacterWalkTarget = null;
+        demoCharacterArcWalk = null;
+      }
+    } else if (!tawafComplete && tawafPoints.length > 0) {
+      const point = tawafPoints[activeTawafIndex];
+      const center = getTawafPointCenter(point);
+      if (center) {
+        const c = clampToOutsideKaaba(center.x, center.z);
+        demoCharacter.position.set(c.x, groundY, c.z);
+        demoCharacter.rotation.y = Math.atan2(-c.x, c.z);
+      }
     }
   }
 
@@ -378,24 +621,31 @@ function onResize() {
 export async function enter(c) {
   ctx = c;
 
-  // Auto-detect UI buttons if not passed
   const found = autoFindButtons();
   ctx.nextBtn = ctx.nextBtn || found.nextBtn;
   ctx.restartBtn = ctx.restartBtn || found.restartBtn;
   ctx.pauseBtn = ctx.pauseBtn || found.pauseBtn;
   ctx.closeBtn = ctx.closeBtn || found.closeBtn;
 
-  // No CLOSE button needed
   if (ctx.closeBtn) ctx.closeBtn.style.display = "none";
 
-  // Wire buttons
-  if (ctx.nextBtn) ctx.nextBtn.onclick = () => advanceTawaf();
+  // ✅ Updated NEXT behavior:
+  if (ctx.nextBtn) {
+    ctx.nextBtn.onclick = async () => {
+      // If user pressed NEXT during overlay video, stop it first like before
+      // But FIRST NEXT click shows dua panel (only once).
+      if (!haramDuaShown) {
+        const didShow = await showDuaOnce();
+        if (didShow) return;
+        // If dua config missing -> fallback to normal next
+      }
+      advanceTawaf();
+    };
+  }
 
   if (ctx.restartBtn) {
     ctx.restartBtn.onclick = () => {
       if (tawafComplete || tawafPoints.length === 0) return;
-
-      // Restart replays current step media. Keep player locked (like current design).
       lockMovement();
       const point = tawafPoints[activeTawafIndex];
       restartTriggerMedia(ctx, point);
@@ -404,7 +654,6 @@ export async function enter(c) {
 
   if (ctx.pauseBtn) ctx.pauseBtn.onclick = () => togglePauseTriggerMedia(ctx);
 
-  // Next always visible
   setNextVisible();
 
   const { canvas, basePath } = ctx;
@@ -429,9 +678,12 @@ export async function enter(c) {
   tawafComplete = false;
   movementLocked = false;
 
+  // reset dua for each scene enter
+  haramDuaShown = false;
+  hideDuaPanel();
+
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87ceeb);
-  scene.fog = new THREE.Fog(0x87ceeb, 35, 140);
 
   const w = canvas.clientWidth || window.innerWidth;
   const h = canvas.clientHeight || window.innerHeight;
@@ -447,7 +699,7 @@ export async function enter(c) {
   renderer.shadowMap.enabled = true;
 
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
-  renderer.toneMappingExposure = 1.05;
+  renderer.toneMappingExposure = 0.88;
 
   const pmrem = new THREE.PMREMGenerator(renderer);
   scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
@@ -457,7 +709,7 @@ export async function enter(c) {
 
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(80, 80),
-    new THREE.MeshStandardMaterial({ color: 0xb8b8b8, roughness: 0.95 })
+    new THREE.MeshStandardMaterial({ color: 0x2e2e2e, roughness: 0.95 })
   );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
@@ -475,9 +727,24 @@ export async function enter(c) {
   fill.position.set(-10, 10, -5);
   scene.add(fill);
 
-  // Create and position marker
   createTawafBeam();
   updateTawafMarker();
+
+  demoCharacter = createDemoCharacter();
+  if (tawafPoints.length > 0) {
+    const firstCenter = getTawafPointCenter(tawafPoints[0]);
+    if (firstCenter) {
+      const c = clampToOutsideKaaba(firstCenter.x, firstCenter.z);
+      demoCharacter.position.set(c.x, groundY, c.z);
+    }
+  } else {
+    demoCharacter.position.set(-11, groundY, -6);
+  }
+  scene.add(demoCharacter);
+
+  demoCharacterWalking = false;
+  demoCharacterWalkTarget = null;
+  demoCharacterArcWalk = null;
 
   await loadHaramModel(scene, basePath);
 
@@ -499,6 +766,10 @@ export function exit() {
   document.removeEventListener("keyup", onKeyUp);
   window.removeEventListener("resize", onResize);
 
+  hideDuaPanel();
+  duaUi = null;
+  haramDuaShown = false;
+
   if (renderer) {
     renderer.dispose();
     renderer = null;
@@ -513,4 +784,8 @@ export function exit() {
   tawafBeam = null;
   tawafGlow = null;
   tawafRing = null;
+  demoCharacter = null;
+  demoCharacterWalkTarget = null;
+  demoCharacterWalking = false;
+  demoCharacterArcWalk = null;
 }

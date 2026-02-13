@@ -5,7 +5,11 @@
     "center": [-11.854, 0, -4.11],
     "radius": 1.8,
     "video": "media/videos/tawaf1.mp4",
-    "audio": "media/audio/tawaf1.mp3"
+    "audio": "media/audio/tawaf1.mp3",
+
+    "duaText": "Dua text yahan paste karo (Arabic/Urdu).",
+    "duaAudio": "media/audio/duas/start_dua.mp3",
+    "duaDurationMs": 5000
   },
   {
     "id": "yameni",
