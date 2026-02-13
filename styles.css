@@ -1420,7 +1420,7 @@ html, body{
 
 .duaSidePanel{
   position: absolute;
-  top: max(12px, env(safe-area-inset-top));
+  top: max(100px, env(safe-area-inset-top));
   right: max(12px, env(safe-area-inset-right));
   z-index: 4;
   width: min(520px, 42vw);
@@ -1479,5 +1479,35 @@ html, body{
   .duaSideFrame{
     border-radius: 12px;
   }
+}
+.trainingViewport{ position: relative; }
+
+.trainingCharacterCanvas{
+  position: absolute;
+  right: 6%;
+  top: 52%;
+  transform: translateY(-50%);
+  width: min(32vw, 520px);
+  height: min(62vh, 620px);
+  z-index: 10;
+  pointer-events: none;
+}
+/* Training character holder (right side) */
+.trainingCharacter{
+  display: block;
+  position: absolute;
+  right: 2%;
+  bottom: 18%;
+  width: 18%;
+  height: 58%;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Character canvas fills holder */
+.trainingCharacter canvas{
+  width: 100%;
+  height: 100%;
+  display: block;
 }
 

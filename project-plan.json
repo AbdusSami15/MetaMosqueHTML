@@ -1,0 +1,110 @@
+{
+  "project": {
+    "name": "MetaMosque",
+    "repo": "MetaMosqueHTML",
+    "version": "1.0.0",
+    "description": "Virtual educational mosque walkthrough with training and first-person 3D scenes.",
+    "rootPath": "./",
+    "entry": "index.html"
+  },
+  "package": {
+    "scripts": {
+      "dev": "vite",
+      "dev:static": "serve . -p 5500",
+      "build": "vite build",
+      "preview": "vite preview",
+      "deploy": "npx gh-pages -d dist"
+    },
+    "dependencies": {
+      "three": "^0.160.0"
+    },
+    "devDependencies": {
+      "vite": "^5.4.0",
+      "serve": "^14.2.0"
+    }
+  },
+  "vite": {
+    "base": "auto-detected (see vite.config.js) — uses / for Vercel, /MetaMosqueHTML/ for production when not on Vercel",
+    "build": {
+      "outDir": "dist",
+      "input": "index.html"
+    },
+    "server": { "port": 5173, "open": true }
+  },
+  "deploy": {
+    "netlify": {
+      "buildCommand": "npm run build",
+      "publish": "dist",
+      "spaFallback": "/index.html",
+      "note": "Option to serve root without build (publish = .)"
+    },
+    "vercel": {
+      "buildCommand": "npm run build",
+      "outputDirectory": "dist",
+      "rewrites": ["/((?!assets/).*) -> /index.html"]
+    },
+    "githubPages": {
+      "workflow": "CI builds dist and deploys to gh-pages or use npm run deploy",
+      "note": "Ensure package-lock.json is committed; large assets may need Git LFS"
+    }
+  },
+  "assets": {
+    "public": {
+      "bg": "assets/bg/",
+      "ui": "assets/ui/",
+      "media_shared": "assets/media/shared/",
+      "media_hajj": "assets/media/hajj/",
+      "media_umrah": "assets/media/umrah/"
+    },
+    "conventions": "Use relative paths; step_01.mp4 / step_01.mp3 naming; keep large binaries tracked with Git LFS if >50MB"
+  },
+  "scenes": {
+    "root": "assets/scenes/",
+    "list": [
+      {
+        "id": "safa_marwah",
+        "path": "assets/scenes/safa_marwah/",
+        "subdirs": ["config/", "media/", "scripts/"],
+        "expectedFiles": {
+          "config": ["points.json", "scene.config.json"],
+          "scripts": ["index.js", "media.js", "points.js"]
+        },
+        "entry": "assets/scenes/safa_marwah/scripts/index.js"
+      },
+      {
+        "id": "umrah_haram",
+        "path": "assets/scenes/umrah_haram/",
+        "subdirs": ["config/", "media/", "scripts/"],
+        "expectedFiles": {
+          "config": ["haram_dua.json", "scene.config.json", "tawaf.json", "triggers.json"],
+          "scripts": ["index.js", "media.js", "tawaf.js", "triggers.js"]
+        },
+        "entry": "assets/scenes/umrah_haram/scripts/index.js"
+      }
+    ],
+    "runtimeContract": "Each scene's scripts/index.js must export enter(ctx) and exit() functions; sceneRouter dynamically imports scenes based on `data-scene` or routing"
+  },
+  "index.html": {
+    "basePath": "Sets window.__BASE_PATH__ automatically from document.location.pathname; you can override via a script that sets window.__BASE_PATH__ before other scripts",
+    "importmap": "three is loaded via unpkg import map in index.html (three@0.160.0)"
+  },
+  "runInstructions": {
+    "install": "npm install",
+    "dev": "npm run dev (vite)",
+    "staticDev": "npm run dev:static (serve . -p 5500)",
+    "build": "npm run build",
+    "preview": "npm run preview"
+  },
+  "deployChecklist": [
+    "Commit package-lock.json",
+    "If large assets exist, enable Git LFS and track extensions (mp4, glb, gltf, bin)",
+    "Verify base path: set window.__BASE_PATH__ when serving from a subpath",
+    "Test asset loading and 200 responses in Network tab after deploy"
+  ],
+  "notes": {
+    "codeEntryPoints": ["main.js", "sceneRouter.js", "training.js", "trainingCharacter3d.js"],
+    "staticHostsAdvice": "Vercel/Netlify: set build command and publish directory to dist. Netlify can also serve root without build.",
+    "portability": "project-plan.json is self-contained and can be used by other tooling or CI to auto-generate build/deploy configs. Paths are relative to project root."
+  },
+  "generatedAt": "2026-02-13T00:00:00Z"
+}

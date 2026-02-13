@@ -1,4 +1,6 @@
+// training.js (UPDATED)
 import { resolveUrl } from "./src/basePath.js";
+import { initTrainingCharacter3D, disposeTrainingCharacter3D } from "./trainingCharacter3d.js";
 
 const NEXT_SCENE_NAME = "SCENE";
 
@@ -6,6 +8,10 @@ const TRAINING_CONFIG = {
   backgroundImage: "assets/bg/training_room_bg.jpg",
   backgroundFallbackColor: "#2a2520",
   silhouetteImage: "assets/ui/training_silhouette.png",
+
+  // ✅ GLB (training scene me character)
+  characterGlb: "assets/scenes/umrah_haram/media/models/character.glb",
+
   /** 4th audio played after last playlist item; SCENE button enables when this ends */
   nextStepAudio: "assets/media/audio/umrah/NextStep.mp3",
   playlist: [
@@ -22,13 +28,11 @@ const trainingVideo = document.getElementById("trainingVideo");
 const trainingAudio = document.getElementById("trainingAudio");
 const tapToPlayOverlay = document.getElementById("tapToPlayOverlay");
 
-/* overlays (if present in your HTML) */
 const loadingOverlay = document.getElementById("loadingOverlay");
 const loadingText = document.getElementById("loadingText");
 const disclaimerOverlay = document.getElementById("disclaimerOverlay");
 const disclaimerOk = document.getElementById("disclaimerOk");
 
-/* SKIP button (same selector / name) */
 function getSkipBtn() {
   return document.querySelector('[data-action="trainSkip"]');
 }
@@ -36,11 +40,12 @@ function getSkipBtn() {
 let currentIndex = 0;
 let isPlaying = false;
 
-/* new state */
 let allFinished = false;
-let nextSceneName = "";      // label shown on SKIP button
-let nextSceneId = "";        // optional id (if you pass it)
+let nextSceneName = "";
+let nextSceneId = "";
 let pendingGo = false;
+
+let characterHost = null;
 
 function forceHideTapOverlay() {
   if (tapToPlayOverlay) tapToPlayOverlay.classList.add("hidden");
@@ -60,6 +65,7 @@ function setBackground() {
 }
 
 function setSilhouette() {
+  // Keep silhouette as fallback only (does not affect 3D host)
   if (!trainingCharacter || !TRAINING_CONFIG.silhouetteImage) return;
 
   const path = resolveUrl(TRAINING_CONFIG.silhouetteImage);
@@ -67,6 +73,62 @@ function setSilhouette() {
   img.onload = () => { trainingCharacter.style.backgroundImage = "url(" + path + ")"; };
   img.onerror = () => { trainingCharacter.style.backgroundImage = "none"; };
   img.src = path;
+}
+
+function ensureCharacterHost() {
+  if (!trainingRoot) return null;
+
+  let host = document.getElementById("trainingCharacter3dHost");
+  if (!host) {
+    host = document.createElement("div");
+    host.id = "trainingCharacter3dHost";
+
+    // ✅ place relative to trainingRoot (overlay on top of video)
+    host.style.position = "absolute";
+    host.style.right = "6%";
+    host.style.bottom = "18%";
+    host.style.width = "22%";
+    host.style.height = "62%";
+    host.style.pointerEvents = "none";
+    host.style.zIndex = "6";
+
+    trainingRoot.appendChild(host);
+  }
+  characterHost = host;
+  return host;
+}
+
+async function init3DCharacter() {
+  const host = ensureCharacterHost();
+  if (!host) return;
+
+  disposeTrainingCharacter3D();
+
+  // IMPORTANT: host CSS here (screen placement)
+  host.style.right = "14%";
+  host.style.bottom = "12%";
+  host.style.width = "26%";
+  host.style.height = "74%";
+
+  const THREE_MOD = await import("three");
+  const { Vector3 } = THREE_MOD;
+
+  await initTrainingCharacter3D({
+    host,
+    modelUrl: TRAINING_CONFIG.characterGlb,
+
+    // ✅ model inside frame (left shift)
+    modelScale: 1.14,
+   modelPos: new Vector3(-0.25, 0, 0),
+
+    modelRotY: 0,
+
+
+    // ✅ zoom out + slightly left camera
+    camPos: new Vector3(-0.6, 1.6, 3.2),
+
+    camLookAt: new Vector3(-0.25, 1.25, 0.0),
+  });
 }
 
 function setSkipState(enabled) {
@@ -188,7 +250,6 @@ function loadItem(index) {
       resolve({ ok: true });
       return;
     }
-    /* Always wait for new source: do not use readyState (it can be from previous item) */
     let videoReady = false;
     let audioReady = false;
     let loadFailed = false;
@@ -202,25 +263,16 @@ function loadItem(index) {
       resolve({ ok: !loadFailed });
     }
 
-    function onVideoReady() {
-      videoReady = true;
-      tryResolve();
-    }
-    function onAudioReady() {
-      audioReady = true;
-      tryResolve();
-    }
+    function onVideoReady() { videoReady = true; tryResolve(); }
+    function onAudioReady() { audioReady = true; tryResolve(); }
+
     function onVideoError(e) {
       console.warn("Training: video load failed for item " + currentIndex + ":", item.video, e);
-      loadFailed = true;
-      videoReady = true;
-      tryResolve();
+      loadFailed = true; videoReady = true; tryResolve();
     }
     function onAudioError(e) {
       console.warn("Training: audio load failed for item " + currentIndex + ":", item.audio, e);
-      loadFailed = true;
-      audioReady = true;
-      tryResolve();
+      loadFailed = true; audioReady = true; tryResolve();
     }
 
     trainingVideo.addEventListener("loadeddata", onVideoReady, { once: true });
@@ -233,7 +285,6 @@ function loadItem(index) {
 function nextStep() {
   const isLast = currentIndex >= TRAINING_CONFIG.playlist.length - 1;
   if (isLast) {
-    /* Stop 3rd video/audio, then play NextStep; when it ends, enable SCENE button */
     stopBoth();
     const nextStepSrc = TRAINING_CONFIG.nextStepAudio && resolveUrl(TRAINING_CONFIG.nextStepAudio);
     if (nextStepSrc) {
@@ -267,11 +318,8 @@ function togglePause() {
   }
 }
 
-/* UPDATED: skip becomes "scene button" and stays disabled until all finished */
 function skipTraining() {
   pendingGo = true;
-
-  // show loading then show OK panel (if overlays exist)
   showLoading("LOADING...");
   setTimeout(() => {
     hideLoading();
@@ -279,7 +327,6 @@ function skipTraining() {
   }, 650);
 }
 
-/* Buttons */
 document.addEventListener("click", (e) => {
   if (!trainingRoot || trainingRoot.classList.contains("hidden")) return;
 
@@ -293,7 +340,6 @@ document.addEventListener("click", (e) => {
   if (action === "trainSkip") { skipTraining(); return; }
 });
 
-/* OK button -> exit training + go to new scene */
 if (disclaimerOk) {
   disclaimerOk.addEventListener("click", () => {
     if (!pendingGo) {
@@ -304,17 +350,13 @@ if (disclaimerOk) {
     pendingGo = false;
     hideDisclaimer();
 
-    // keep your existing exit event (no breaking changes)
     window.dispatchEvent(new CustomEvent("metamosque:exitTraining"));
-
-    // optional navigation event for your app router (safe: if nobody listens, nothing breaks)
     window.dispatchEvent(new CustomEvent("metamosque:goToScene", {
       detail: { sceneName: nextSceneName, sceneId: nextSceneId }
     }));
   });
 }
 
-/* Audio end => stop video. NextStep plays only when user clicks NEXT on last item. */
 if (trainingAudio) {
   trainingAudio.addEventListener("ended", () => {
     stopBoth();
@@ -323,8 +365,6 @@ if (trainingAudio) {
   });
 }
 
-/* Extra safety:
-   If browser doesn't respect loop sometimes, manually replay video while audio is still playing */
 if (trainingVideo) {
   trainingVideo.addEventListener("ended", () => {
     if (!trainingAudio) return;
@@ -335,27 +375,27 @@ if (trainingVideo) {
   });
 }
 
-/* Start / Exit */
-window.addEventListener("metamosque:startTraining", (e) => {
+window.addEventListener("metamosque:startTraining", async (e) => {
   forceHideTapOverlay();
   setBackground();
   setSilhouette();
 
-  // reset state each time
   currentIndex = 0;
   allFinished = false;
   pendingGo = false;
 
-  // scene label/id from event detail (optional)
   const d = (e && e.detail) ? e.detail : {};
   nextSceneName = (d && typeof d.nextSceneName === "string") ? d.nextSceneName : NEXT_SCENE_NAME;
   nextSceneId = (d && typeof d.nextSceneId === "string") ? d.nextSceneId : "";
 
-  // apply to skip button: disabled until last audio has finished
   setSkipLabel(nextSceneName);
   setSkipState(false);
 
   if (trainingRoot) trainingRoot.classList.remove("hidden");
+
+  // ✅ init 3D character
+  try { await init3DCharacter(); } catch (err) { console.warn("Training character init failed:", err); }
+
   loadItem(0).then((result) => {
     if (result && result.ok) playBothFromStart();
   });
@@ -366,6 +406,9 @@ window.addEventListener("metamosque:exitTraining", () => {
   hideLoading();
   hideDisclaimer();
   pendingGo = false;
+
+  // ✅ dispose 3D character
+  disposeTrainingCharacter3D();
 
   if (trainingRoot) trainingRoot.classList.add("hidden");
   const mainMenu = document.getElementById("mainMenu");

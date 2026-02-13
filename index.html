@@ -217,10 +217,7 @@
           <div class="duaSideArabic" id="duaSideArabic" dir="rtl" lang="ar"></div>
           <div class="duaSideLatin" id="duaSideLatin"></div>
 
-          <div class="duaSideActions">
-            <button class="hudBtn" type="button" id="duaSideOk">OK</button>
-          </div>
-        </div>
+                  </div>
         <audio id="duaSideAudio" preload="metadata"></audio>
       </aside>
 
@@ -261,6 +258,8 @@
       <div class="trainingBg" id="trainingBg" aria-hidden="true"></div>
       <div class="trainingViewport">
         <div class="trainingHUD">
+<canvas id="trainingCharacterCanvas" class="trainingCharacterCanvas"></canvas>
+
           <div class="trainingVideoFrame" id="trainingVideoFrame">
             <div class="trainingVideoInner">
               <video id="trainingVideo" playsinline preload="metadata"></video>
@@ -270,7 +269,8 @@
               </div>
             </div>
           </div>
-          <div class="trainingCharacter" id="trainingCharacter" aria-hidden="true"></div>
+         <canvas class="trainingCharacterCanvas" id="trainingCharacterCanvas"></canvas>
+
           <div class="trainingControls">
             <button class="hudBtn" type="button" data-action="trainNext">NEXT</button>
             <button class="hudBtn" type="button" data-action="trainRestart">RESTART</button>
@@ -286,5 +286,7 @@
   <script type="module" src="./sceneRouter.js"></script>
   <script src="./main.js"></script>
   <script type="module" src="./training.js"></script>
+<script type="module" src="./trainingCharacter3d.js"></script>
+
 </body>
 </html>

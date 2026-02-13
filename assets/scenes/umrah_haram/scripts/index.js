@@ -1,6 +1,7 @@
 // index.js (FULL REPLACE)
-// ✅ NEW: FIRST NEXT click shows Dua side panel + plays audio (Haram only)
-// After that, NEXT behaves as before (advance tawaf points).
+// ✅ Flow same as before:
+//    NEXT always advances tawaf (stops video overlay, moves to next point, demo character moves).
+// ✅ NEW: On first NEXT only, show Dua side panel (non-blocking) + auto-hide after 5 seconds.
 
 import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
@@ -59,6 +60,7 @@ let demoCharacterArcWalk = null;
 // ✅ Dua UI state
 let haramDuaShown = false;
 let duaUi = null;
+let duaAutoHideTimer = null;
 
 function clampToOutsideKaaba(x, z) {
   const L = -KAABA_HALF_X - KAABA_MARGIN;
@@ -77,7 +79,9 @@ function clampToOutsideKaaba(x, z) {
   }
 
   const r = Math.sqrt(out.x * out.x + out.z * out.z);
-  const inHateemHalf = (HATEEM_HALF === -1 && out.x <= 0) || (HATEEM_HALF === 1 && out.x >= 0);
+  const inHateemHalf =
+    (HATEEM_HALF === -1 && out.x <= 0) || (HATEEM_HALF === 1 && out.x >= 0);
+
   if (inHateemHalf && r < HATEEM_RADIUS && r > 1e-6) {
     const scale = HATEEM_RADIUS / r;
     out = { x: out.x * scale, z: out.z * scale };
@@ -141,11 +145,20 @@ function createDemoCharacter() {
   const group = new THREE.Group();
   group.name = "demoCharacter";
 
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a3728, roughness: 0.9, metalness: 0.05 });
-  const headMat = new THREE.MeshStandardMaterial({ color: 0xe8c4a0, roughness: 0.9, metalness: 0.05 });
+  const bodyMat = new THREE.MeshStandardMaterial({
+    color: 0x4a3728,
+    roughness: 0.9,
+    metalness: 0.05,
+  });
+  const headMat = new THREE.MeshStandardMaterial({
+    color: 0xe8c4a0,
+    roughness: 0.9,
+    metalness: 0.05,
+  });
 
   const bodyHeight = 1.6;
   const bodyRadius = 0.35;
+
   const body = new THREE.Mesh(
     new THREE.CapsuleGeometry(bodyRadius, bodyHeight - 2 * bodyRadius, 8, 16),
     bodyMat
@@ -236,23 +249,17 @@ function createTawafBeam() {
       varying vec2 vUv;
       uniform float uTime;
       uniform vec3 uColor;
-
       float hash(float n){ return fract(sin(n)*43758.5453); }
-
       void main(){
         float mid = 1.0 - abs(vUv.y - 0.5) * 2.0;
         float band = sin((vUv.y * 12.0) + (uTime * 3.0)) * 0.5 + 0.5;
         float n = hash(floor(vUv.y*40.0) + floor(uTime*10.0));
         float flicker = 0.85 + 0.15 * n;
-
         float alpha = mid * (0.35 + 0.35 * band) * flicker;
-
         float edge = 1.0 - abs(vUv.x - 0.5) * 2.0;
         alpha *= pow(edge, 0.35);
-
         float pulse = 0.75 + 0.25 * sin(uTime * 2.5);
         alpha *= pulse;
-
         gl_FragColor = vec4(uColor, alpha);
       }
     `,
@@ -352,7 +359,9 @@ function advanceTawaf() {
 
   playSfx(ctx.basePath, "media/audio/NextStep.mp3", 1);
 
+  // ✅ This hides video overlay too (same as before)
   stopTriggerMedia(ctx);
+
   tawafMediaLocked = false;
   unlockMovement();
 
@@ -372,6 +381,7 @@ function advanceTawaf() {
   if (ctx?.hint) ctx.hint.textContent = tawafPoints[activeTawafIndex].title;
   updateTawafMarker();
 
+  // ✅ Demo character moves to next point (same as before)
   if (demoCharacter && tawafPoints[activeTawafIndex]) {
     const nextCenter = getTawafPointCenter(tawafPoints[activeTawafIndex]);
     if (nextCenter) {
@@ -430,12 +440,7 @@ function initDuaUiOnce() {
 
   duaUi = { panel, titleEl, arEl, laEl, okBtn, audioEl, data: null };
 
-  if (okBtn) {
-    okBtn.onclick = () => {
-      hideDuaPanel();
-    };
-  }
-
+  if (okBtn) okBtn.onclick = () => hideDuaPanel();
   return duaUi;
 }
 
@@ -452,7 +457,6 @@ function showDuaPanel(data) {
   ui.panel.classList.remove("hidden");
   ui.panel.setAttribute("aria-hidden", "false");
 
-  // Play audio (user gesture = NEXT click)
   if (ui.audioEl && data?.audio) {
     const src = resolveUrl(ctx?.basePath || "", data.audio);
     ui.audioEl.pause();
@@ -460,47 +464,54 @@ function showDuaPanel(data) {
     if (ui.audioEl.src !== src) ui.audioEl.src = src;
     ui.audioEl.play().catch(() => {});
   }
+
+  if (duaAutoHideTimer) {
+    clearTimeout(duaAutoHideTimer);
+    duaAutoHideTimer = null;
+  }
+
+  duaAutoHideTimer = setTimeout(() => {
+    hideDuaPanel();
+  }, 10000);
 }
 
 function hideDuaPanel() {
   const ui = initDuaUiOnce();
   if (!ui?.panel) return;
 
+  if (duaAutoHideTimer) {
+    clearTimeout(duaAutoHideTimer);
+    duaAutoHideTimer = null;
+  }
+
   ui.panel.classList.add("hidden");
   ui.panel.setAttribute("aria-hidden", "true");
 
   if (ui.audioEl) {
     ui.audioEl.pause();
+    ui.audioEl.currentTime = 0;
   }
 }
 
-async function showDuaOnce() {
-  if (haramDuaShown) return false;
+// ✅ Non-blocking: show dua but do NOT stop next flow
+async function maybeShowDuaNonBlocking() {
+  if (haramDuaShown) return;
   haramDuaShown = true;
 
   const ui = initDuaUiOnce();
-  if (!ui) return false;
+  if (!ui) return;
 
-  // Load config once
   if (!ui.data) ui.data = await loadHaramDua(ctx.basePath);
-
-  // If config missing, don't block gameplay
-  if (!ui.data) return false;
+  if (!ui.data) return;
 
   showDuaPanel(ui.data);
-  return true;
 }
 
 function onKeyDown(e) {
   if (e.code === "KeyE") {
-    // E = Next
-    if (!haramDuaShown) {
-      // Show dua on first "Next"
-      showDuaOnce().then((didShow) => {
-        if (!didShow) advanceTawaf();
-      });
-      return;
-    }
+    // ✅ Same flow as before: always advance
+    // ✅ plus first time dua show (non-blocking)
+    maybeShowDuaNonBlocking();
     advanceTawaf();
     return;
   }
@@ -629,16 +640,18 @@ export async function enter(c) {
 
   if (ctx.closeBtn) ctx.closeBtn.style.display = "none";
 
-  // ✅ Updated NEXT behavior:
+  // reset dua
+  haramDuaShown = false;
+  if (duaAutoHideTimer) {
+    clearTimeout(duaAutoHideTimer);
+    duaAutoHideTimer = null;
+  }
+  hideDuaPanel();
+
+  // ✅ NEXT button: always advance (same as before) + non-blocking dua once
   if (ctx.nextBtn) {
-    ctx.nextBtn.onclick = async () => {
-      // If user pressed NEXT during overlay video, stop it first like before
-      // But FIRST NEXT click shows dua panel (only once).
-      if (!haramDuaShown) {
-        const didShow = await showDuaOnce();
-        if (didShow) return;
-        // If dua config missing -> fallback to normal next
-      }
+    ctx.nextBtn.onclick = () => {
+      maybeShowDuaNonBlocking();
       advanceTawaf();
     };
   }
@@ -677,10 +690,6 @@ export async function enter(c) {
   tawafMediaLocked = false;
   tawafComplete = false;
   movementLocked = false;
-
-  // reset dua for each scene enter
-  haramDuaShown = false;
-  hideDuaPanel();
 
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0x87ceeb);
@@ -734,8 +743,8 @@ export async function enter(c) {
   if (tawafPoints.length > 0) {
     const firstCenter = getTawafPointCenter(tawafPoints[0]);
     if (firstCenter) {
-      const c = clampToOutsideKaaba(firstCenter.x, firstCenter.z);
-      demoCharacter.position.set(c.x, groundY, c.z);
+      const c2 = clampToOutsideKaaba(firstCenter.x, firstCenter.z);
+      demoCharacter.position.set(c2.x, groundY, c2.z);
     }
   } else {
     demoCharacter.position.set(-11, groundY, -6);
@@ -765,6 +774,11 @@ export function exit() {
   document.removeEventListener("keydown", onKeyDown);
   document.removeEventListener("keyup", onKeyUp);
   window.removeEventListener("resize", onResize);
+
+  if (duaAutoHideTimer) {
+    clearTimeout(duaAutoHideTimer);
+    duaAutoHideTimer = null;
+  }
 
   hideDuaPanel();
   duaUi = null;

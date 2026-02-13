@@ -8,6 +8,14 @@
     "audio": "media/audio/safa1.mp3"
   },
   {
+    "id": "running_start",
+    "title": "Running Start",
+    "center": [0, 0, 0],
+    "radius": 1.6,
+    "video": "media/videos/run_start.mp4",
+    "audio": "media/audio/RunGreenLights.mp3"
+  },
+  {
     "id": "marwah",
     "title": "Marwah",
     "center": [0, 0, -5],
