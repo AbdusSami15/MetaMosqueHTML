@@ -1,7 +1,11 @@
 {
   "groundY": 0,
-  "cameraStart": [0, 1.6, 5],
-  "cameraLookAt": [0, 1.6, -25],
+  "minGroundY": 0,
+  "eyeHeight": 2,
+
+  "cameraStart": [-119.203, 9, -141.535],
+  "cameraYawPitch": [-7.123, 0.106],
+
   "model": {
     "path": "media/models/safa_marwah.glb",
     "scale": 1,

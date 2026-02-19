@@ -15,10 +15,12 @@ import {
   restartTriggerMedia,
   togglePauseTriggerMedia,
 } from "./media.js";
+import { MobileControls } from "./mobileControls.js";
 
 const MOVE_SPEED = 0.15;
 
 let renderer, scene, camera, controls;
+let mobileControls = null;
 let tawafPoints = [];
 let activeTawafIndex = 0;
 let tawafMediaLocked = false;
@@ -37,6 +39,8 @@ let moveRight = false;
 
 let ctx = null;
 let groundY = 0;
+// Respect configured camera start Y across update loop
+let CAMERA_START_Y = null;
 
 // Marker (beam)
 let tawafBeam = null;
@@ -44,16 +48,23 @@ let tawafGlow = null;
 let tawafRing = null;
 
 // Demo character
+// Demo character (3D Model)
 let demoCharacter = null;
+let demoCharacterMixer = null;
+let demoCharacterActions = {};
+let demoCharacterActiveAction = null;
+let clock = new THREE.Clock();
+
+// Walking state
 let demoCharacterWalkTarget = null;
 let demoCharacterWalking = false;
-const DEMO_CHARACTER_WALK_SPEED = 2.0;
+const DEMO_CHARACTER_WALK_SPEED = 1.6; // slightly faster/slower depending on animation
 
 // Kaaba boundary
 const KAABA_HALF_X = 9;
 const KAABA_HALF_Z = 9;
 const KAABA_MARGIN = 2;
-const HATEEM_RADIUS = 14;
+const HATEEM_RADIUS = 15;
 const HATEEM_HALF = -1;
 let demoCharacterArcWalk = null;
 
@@ -79,11 +90,17 @@ function clampToOutsideKaaba(x, z) {
   }
 
   const r = Math.sqrt(out.x * out.x + out.z * out.z);
-  const inHateemHalf =
-    (HATEEM_HALF === -1 && out.x <= 0) || (HATEEM_HALF === 1 && out.x >= 0);
 
-  if (inHateemHalf && r < HATEEM_RADIUS && r > 1e-6) {
-    const scale = HATEEM_RADIUS / r;
+  // Hateem Zone: The hard clamp should only be a safety net (e.g. wall collision).
+  // The walking logic now handles the smooth path.
+  // We keep this to prevent entering the wall if something else pushes it there.
+  const WALL_RADIUS = 14;
+
+  // Check mostly North side
+  const inHateemZone = (out.z > 2.0);
+
+  if (inHateemZone && r < WALL_RADIUS && r > 1e-6) {
+    const scale = WALL_RADIUS / r;
     out = { x: out.x * scale, z: out.z * scale };
   }
   return out;
@@ -100,8 +117,8 @@ function playSfx(basePath, relPath, volume = 1) {
   try {
     const a = new Audio(resolveUrl(basePath, relPath));
     a.volume = volume;
-    a.play().catch(() => {});
-  } catch (_) {}
+    a.play().catch(() => { });
+  } catch (_) { }
 }
 
 function normalizeBtnText(t) {
@@ -141,41 +158,100 @@ function snapModelToGround(root, groundYLocal = 0) {
   root.position.y += offset;
 }
 
-function createDemoCharacter() {
-  const group = new THREE.Group();
-  group.name = "demoCharacter";
+// ✅ Load Character GLB with Animations
+function loadDemoCharacter(sceneThree, basePath) {
+  return new Promise((resolve) => {
+    const loader = new GLTFLoader();
+    const url = resolveUrl(basePath, "media/models/character.glb");
 
-  const bodyMat = new THREE.MeshStandardMaterial({
-    color: 0x4a3728,
-    roughness: 0.9,
-    metalness: 0.05,
+    loader.load(
+      url,
+      (gltf) => {
+        const root = gltf.scene;
+        root.name = "demoCharacter";
+
+        // Scale/Position
+        root.scale.set(1.5, 1.5, 1.5);
+
+        // Shadows & Materials
+        root.traverse((child) => {
+          if (!child.isMesh) return;
+          child.castShadow = true;
+          child.receiveShadow = true;
+
+          if (child.material) {
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            for (const m of mats) {
+              if (m.map) m.map.colorSpace = THREE.SRGBColorSpace;
+              m.needsUpdate = true;
+            }
+          }
+        });
+
+        // Setup Animation Mixer
+        const mixer = new THREE.AnimationMixer(root);
+        demoCharacterMixer = mixer;
+        const clips = gltf.animations || [];
+
+        // Extract clips
+        // We look for "idle" and "walk" (fuzzy match)
+        clips.forEach((clip) => {
+          const name = clip.name.toLowerCase();
+          let action = mixer.clipAction(clip);
+          action.setLoop(THREE.LoopRepeat, Infinity);
+          action.clampWhenFinished = false;
+          action.enabled = false; // start disabled
+
+          if (name.includes("walk")) {
+            demoCharacterActions["walk"] = action;
+          } else if (name.includes("idle") || name.includes("breathing")) {
+            demoCharacterActions["idle"] = action;
+          } else if (name.includes("talk")) {
+            demoCharacterActions["talk"] = action;
+          }
+        });
+
+        // Fallback if no specific walk/idle found
+        if (!demoCharacterActions["idle"] && clips.length > 0) {
+          demoCharacterActions["idle"] = mixer.clipAction(clips[0]);
+        }
+        if (!demoCharacterActions["walk"] && clips.length > 1) {
+          demoCharacterActions["walk"] = mixer.clipAction(clips[1]);
+        }
+
+        // Snap to ground
+        snapModelToGround(root, groundY);
+
+        // Start Idle
+        playCharacterAction("idle");
+
+        sceneThree.add(root);
+        demoCharacter = root;
+        resolve(root);
+      },
+      undefined,
+      (err) => {
+        console.warn("Failed to load character:", err);
+        resolve(null);
+      }
+    );
   });
-  const headMat = new THREE.MeshStandardMaterial({
-    color: 0xe8c4a0,
-    roughness: 0.9,
-    metalness: 0.05,
-  });
+}
 
-  const bodyHeight = 1.6;
-  const bodyRadius = 0.35;
+function playCharacterAction(name, transitionDuration = 0.5) {
+  if (!demoCharacterMixer) return;
 
-  const body = new THREE.Mesh(
-    new THREE.CapsuleGeometry(bodyRadius, bodyHeight - 2 * bodyRadius, 8, 16),
-    bodyMat
-  );
-  body.castShadow = true;
-  body.receiveShadow = true;
-  body.position.y = bodyHeight / 2;
-  group.add(body);
+  const newAction = demoCharacterActions[name];
+  if (!newAction) return;
 
-  const headRadius = 0.28;
-  const head = new THREE.Mesh(new THREE.SphereGeometry(headRadius, 16, 12), headMat);
-  head.castShadow = true;
-  head.receiveShadow = true;
-  head.position.y = bodyHeight + headRadius;
-  group.add(head);
-
-  return group;
+  if (demoCharacterActiveAction !== newAction) {
+    if (demoCharacterActiveAction) {
+      demoCharacterActiveAction.fadeOut(transitionDuration);
+    }
+    newAction.reset().fadeIn(transitionDuration).play();
+    newAction.enabled = true;
+    demoCharacterActiveAction = newAction;
+  }
 }
 
 function loadHaramModel(sceneThree, basePath) {
@@ -328,39 +404,70 @@ function beginStep(point) {
   if (ctx?.hint) ctx.hint.textContent = `${point.title} (Reached)`;
 
   const isLastPoint = tawafPoints.length > 0 && activeTawafIndex === tawafPoints.length - 1;
-  if (isLastPoint) setNextSceneButton();
+
+  console.log("[Haram] beginStep called:", { pointTitle: point.title, activeTawafIndex, totalPoints: tawafPoints.length, isLastPoint });
+
+  // Disable next button if this is the last point
+  if (isLastPoint) {
+    console.log("[Haram] Last point detected, calling setNextSceneButton");
+    setNextSceneButton();
+  }
 
   if (point.video || point.audio) {
+    playCharacterAction("talk");
     playTriggerMedia(ctx, point, {
       onEnded: () => {
         if (ctx?.hint) ctx.hint.textContent = `${point.title} (Done)`;
-        if (isLastPoint) setNextSceneButton();
+        playCharacterAction("idle");
       },
     });
   } else {
+    // No media, just idle
+    playCharacterAction("idle");
     if (ctx?.hint) ctx.hint.textContent = `${point.title} (Done)`;
-    if (isLastPoint) setNextSceneButton();
   }
 }
 
+
+
 function setNextSceneButton() {
-  if (!ctx?.nextBtn) return;
-  ctx.nextBtn.textContent = "Next scene";
-  ctx.nextBtn.onclick = () => {
-    if (typeof window.sceneRouter !== "undefined") {
-      window.sceneRouter.exitScene();
-      window.sceneRouter.enterScene("safa_marwah");
-    }
-  };
+  const nextBtn = document.getElementById("sceneVideoNext");
+  const sceneBtn = document.getElementById("sceneNextSceneBtn");
+
+  console.log("[Haram] setNextSceneButton called:", { nextBtn: !!nextBtn, sceneBtn: !!sceneBtn });
+
+  if (!nextBtn || !sceneBtn) {
+    console.warn("[Haram] Button elements not found!");
+    return;
+  }
+
+  // Disable next button
+  nextBtn.disabled = true;
+  nextBtn.setAttribute("aria-disabled", "true");
+  nextBtn.classList.add("hudBtnDisabled");
+
+  // Enable scene button
+  sceneBtn.disabled = false;
+  sceneBtn.setAttribute("aria-disabled", "false");
+  sceneBtn.classList.remove("hudBtnDisabled");
+
+  console.log("[Haram] Buttons updated successfully");
 }
 
 function advanceTawaf() {
   if (tawafComplete || tawafPoints.length === 0) return;
 
-  playSfx(ctx.basePath, "media/audio/NextStep.mp3", 1);
+  // Function to play specific audio for the Yameni to Hajr-e-Aswad transition
+  if (activeTawafIndex === 1) {
+    playSfx(ctx.basePath, "media/audio/DuaTawafAi.mp3", 1);
+  } else {
+    playSfx(ctx.basePath, "media/audio/NextStep.mp3", 1);
+  }
 
   // ✅ This hides video overlay too (same as before)
   stopTriggerMedia(ctx);
+  // Ensure we stop talking if we force advance
+  // Walking action will override in a moment, but good to be safe.
 
   tawafMediaLocked = false;
   unlockMovement();
@@ -374,7 +481,7 @@ function advanceTawaf() {
     demoCharacterWalking = false;
     demoCharacterWalkTarget = null;
     demoCharacterArcWalk = null;
-    setNextSceneButton();
+    playCharacterAction("idle");
     return;
   }
 
@@ -414,6 +521,13 @@ function advanceTawaf() {
 
       demoCharacter.position.set(startClamp.x, groundY, startClamp.z);
       demoCharacterWalking = true;
+      playCharacterAction("walk");
+
+      // Rotate to face movement direction immediately
+      const lookTarget = new THREE.Vector3(tx, groundY, tz);
+      // Simple lookAt might be wrong if we arc, but good for start
+      // For updated rotation see tick()
+      demoCharacter.lookAt(lookTarget);
     }
   }
 }
@@ -462,7 +576,7 @@ function showDuaPanel(data) {
     ui.audioEl.pause();
     ui.audioEl.currentTime = 0;
     if (ui.audioEl.src !== src) ui.audioEl.src = src;
-    ui.audioEl.play().catch(() => {});
+    ui.audioEl.play().catch(() => { });
   }
 
   if (duaAutoHideTimer) {
@@ -538,6 +652,13 @@ function onKeyUp(e) {
 
 function tick() {
   requestAnimationFrame(tick);
+
+  const dt = clock.getDelta();
+
+  if (demoCharacterMixer) {
+    demoCharacterMixer.update(dt);
+  }
+
   if (!renderer || !scene) return;
 
   if (tawafBeam?.material?.uniforms) {
@@ -550,27 +671,80 @@ function tick() {
     tawafRing.material.opacity = 0.16 + 0.08 * (0.5 + 0.5 * Math.sin(t * 2.0));
   }
 
-  if (controls?.isLocked && !movementLocked) {
+  // ✅ Unified Movement Logic (Keyboard + Mobile)
+  if (!movementLocked) {
+    // 1. Reset velocity for this frame
     velocity.set(0, 0, 0);
 
-    camera.getWorldDirection(dir);
-    dir.y = 0;
-    dir.normalize();
+    // 2. Keyboard Input (only if PointerLock is active)
+    if (controls?.isLocked) {
+      camera.getWorldDirection(dir);
+      dir.y = 0;
+      dir.normalize();
 
-    if (moveForward) velocity.add(dir);
-    if (moveBack) velocity.sub(dir);
+      if (moveForward) velocity.add(dir);
+      if (moveBack) velocity.sub(dir);
 
-    right.crossVectors(dir, new THREE.Vector3(0, 1, 0));
-    if (moveRight) velocity.add(right);
-    if (moveLeft) velocity.sub(right);
-
-    if (velocity.lengthSq() > 0) {
-      velocity.normalize().multiplyScalar(MOVE_SPEED);
-      camera.position.add(velocity);
+      right.crossVectors(dir, new THREE.Vector3(0, 1, 0));
+      if (moveRight) velocity.add(right);
+      if (moveLeft) velocity.sub(right);
     }
 
-    camera.position.y = groundY + 1.6;
+    // 3. Mobile Input
+    if (mobileControls && mobileControls.enabled) {
+      // Look
+      if (mobileControls.lookVector.x !== 0) {
+        // User reported "Left Drag -> Look Right".
+        // Left Drag = Negative dx = Negative lookVector.x.
+        // Previously: -= (-val) => += val (Positive rotation).
+        // If Positive Rotation = Look Right, we want Negative Rotation.
+        // So we use += (-val) => -= val (Negative rotation).
+        controls.getObject().rotation.y += mobileControls.lookVector.x;
+      }
+      if (mobileControls.lookVector.y !== 0) {
+        // PointerLockControls wrapper structure:
+        // YawObject (controls.getObject()) -> PitchObject (children[0] = camera)
+        const pitchObject = controls.getObject().children[0];
+        if (pitchObject) {
+          pitchObject.rotation.x -= mobileControls.lookVector.y;
+          // Clamp pitch
+          const PI_2 = Math.PI / 2;
+          pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, pitchObject.rotation.x));
+        }
+      }
+
+      // Move
+      const mv = mobileControls.moveVector;
+      // mv.z: Back(+), Forward(-). mv.x: Right(+), Left(-)
+      if (mv.lengthSq() > 0.00001) {
+        camera.getWorldDirection(dir);
+        dir.y = 0;
+        dir.normalize();
+
+        right.crossVectors(dir, new THREE.Vector3(0, 1, 0));
+
+        // Add to velocity (accumulate with keyboard if both active)
+        // Forward is -z in Joystick land, so we ADD dir * (-z)
+        velocity.addScaledVector(dir, -mv.z);
+        velocity.addScaledVector(right, mv.x);
+      }
+
+      mobileControls.update();
+    }
+
+    // 4. Apply Velocity
+    if (velocity.lengthSq() > 0) {
+      // Clamp magnitude to 1.0 (so diagonals or combined inputs don't exceed max speed)
+      if (velocity.lengthSq() > 1) velocity.normalize();
+
+      // Apply Move Speed
+      camera.position.addScaledVector(velocity, MOVE_SPEED);
+    }
   }
+
+  // Keep height fixed: use configured start Y when available
+  if (typeof CAMERA_START_Y === "number") camera.position.y = CAMERA_START_Y;
+  else camera.position.y = groundY + 1.6;
 
   if (!tawafComplete && tawafPoints.length > 0) {
     const point = tawafPoints[activeTawafIndex];
@@ -589,30 +763,92 @@ function tick() {
       const t = Math.min(1, arc.t);
 
       const angle = arc.startAngle + arc.totalAngle * t;
-      const r = arc.r1 + (arc.r2 - arc.r1) * t;
+
+      // Base radius from arc interpolation
+      let r = arc.r1 + (arc.r2 - arc.r1) * t;
+
+      // ✅ SMOOTH HATEEM AVOIDANCE
+      // Calculate angular distance from North (Angle 0, where Z is positive)
+      // Normalizing angle to [-PI, PI] for easier distance check
+      let normAngle = angle % (2 * Math.PI);
+      if (normAngle > Math.PI) normAngle -= 2 * Math.PI;
+
+      // Hateem is roughly at Angle 0. Let's say +/- 60 degrees (PI/3).
+      // We want to smoothly push 'r' out to ~25 when near 0.
+      const hateemCenterAngle = 0;
+      const hateemWidth = Math.PI / 2.5; // Width of influence
+      const dist = Math.abs(normAngle - hateemCenterAngle);
+
+      if (dist < hateemWidth) {
+        // Smooth blend factor (1 at center, 0 at edges)
+        // Cosine bump or simple linear. Cosine is smoother.
+        const blend = 0.5 + 0.5 * Math.cos((dist / hateemWidth) * Math.PI);
+        const targetRadius = 26; // Enough to clear Hateem
+        if (r < targetRadius) {
+          r = r + (targetRadius - r) * blend;
+        }
+      }
 
       let px = r * Math.sin(angle);
       let pz = r * Math.cos(angle);
+
+      // Relaxed clamping (just keep outside Kaaba box, don't force radius hard if we already adjusted it)
+      // We still run clamp for the Box, but the Radius check in clampToOutsideKaaba might fight us
+      // if HATEEM_RADIUS is set high.
+      // So we should rely on THIS logic for Hateem, and basic Box clamp for Kaaba walls.
 
       const c = clampToOutsideKaaba(px, pz);
       pos.x = c.x;
       pos.z = c.z;
       pos.y = groundY;
 
-      demoCharacter.rotation.y = Math.atan2(-pos.x, pos.z);
+      // Calculate target point slightly ahead to determine facing direction
+      const lookT = Math.min(1, t + 0.05);
+      const lookAngle = arc.startAngle + arc.totalAngle * lookT;
+      let lookR = arc.r1 + (arc.r2 - arc.r1) * lookT;
+
+      // Apply same radius logic
+      let lookNormAngle = lookAngle % (2 * Math.PI);
+      if (lookNormAngle > Math.PI) lookNormAngle -= 2 * Math.PI;
+      const lookDist = Math.abs(lookNormAngle - hateemCenterAngle);
+
+      if (lookDist < hateemWidth) {
+        const blend = 0.5 + 0.5 * Math.cos((lookDist / hateemWidth) * Math.PI);
+        const targetRadius = 26;
+        if (lookR < targetRadius) lookR = lookR + (targetRadius - lookR) * blend;
+      }
+
+      const lx = lookR * Math.sin(lookAngle);
+      const lz = lookR * Math.cos(lookAngle);
+      const lc = clampToOutsideKaaba(lx, lz);
+
+      const lookTarget = new THREE.Vector3(lc.x, groundY, lc.z);
+      demoCharacter.lookAt(lookTarget);
 
       if (arc.t >= 1) {
         demoCharacterWalking = false;
         demoCharacterWalkTarget = null;
         demoCharacterArcWalk = null;
+        playCharacterAction("idle");
       }
-    } else if (!tawafComplete && tawafPoints.length > 0) {
-      const point = tawafPoints[activeTawafIndex];
-      const center = getTawafPointCenter(point);
-      if (center) {
-        const c = clampToOutsideKaaba(center.x, center.z);
-        demoCharacter.position.set(c.x, groundY, c.z);
-        demoCharacter.rotation.y = Math.atan2(-c.x, c.z);
+    } else {
+      // ✅ NOT WALKING (Idle)
+      // 1. Maintain position at current point if needed (Snapping)
+      if (!tawafComplete && tawafPoints.length > 0) {
+        const point = tawafPoints[activeTawafIndex];
+        const center = getTawafPointCenter(point);
+        if (center) {
+          const c = clampToOutsideKaaba(center.x, center.z);
+          demoCharacter.position.set(c.x, groundY, c.z);
+        }
+      }
+
+      // 2. ALWAYS Face Camera when idle (Start of scene, or reached point)
+      if (camera) {
+        // Look at camera but keep Y level (no tipping)
+        const target = camera.position.clone();
+        target.y = demoCharacter.position.y;
+        demoCharacter.lookAt(target);
       }
     }
   }
@@ -679,6 +915,9 @@ export async function enter(c) {
   const startY = Array.isArray(camStart) && camStart.length >= 2 ? camStart[1] : groundY + 1.6;
   const startZ = Array.isArray(camStart) && camStart.length >= 3 ? camStart[2] : 5;
 
+  // Persist for update loop so we don't override configured startY
+  CAMERA_START_Y = startY;
+
   tawafPoints = await loadTawaf(basePath);
   tawafPoints = (tawafPoints || []).map((p) => ({
     ...p,
@@ -739,17 +978,36 @@ export async function enter(c) {
   createTawafBeam();
   updateTawafMarker();
 
-  demoCharacter = createDemoCharacter();
-  if (tawafPoints.length > 0) {
-    const firstCenter = getTawafPointCenter(tawafPoints[0]);
-    if (firstCenter) {
-      const c2 = clampToOutsideKaaba(firstCenter.x, firstCenter.z);
-      demoCharacter.position.set(c2.x, groundY, c2.z);
+  mobileControls = new MobileControls();
+  // Don't add to scene, just logic.
+
+  // demoCharacter = createDemoCharacter(); // OLD
+  // scene.add(demoCharacter);             // OLD
+
+  // ✅ New Async Load
+  loadDemoCharacter(scene, basePath).then((model) => {
+    if (!model) return;
+
+    if (tawafPoints.length > 0) {
+      const firstCenter = getTawafPointCenter(tawafPoints[0]);
+      if (firstCenter) {
+        const c2 = clampToOutsideKaaba(firstCenter.x, firstCenter.z);
+        model.position.set(c2.x, groundY, c2.z);
+
+        // Face initial direction (tangent-ish) or just toward center?
+        // Let's face the next point if possible, or just tangent.
+        // For now, looking at 0,0 (Kaaba) might be weird for Tawaf.
+        // Let's look along the tangent (-z, x). 
+        // Tangent of circle at (x,z) is (-z, x) for CCW.
+        model.rotation.y = Math.atan2(-c2.x, c2.z);
+      }
+    } else {
+      model.position.set(-11, groundY, -6);
     }
-  } else {
-    demoCharacter.position.set(-11, groundY, -6);
-  }
-  scene.add(demoCharacter);
+  });
+
+  demoCharacterWalking = false;
+  demoCharacterWalkTarget = null;
 
   demoCharacterWalking = false;
   demoCharacterWalkTarget = null;
@@ -766,6 +1024,10 @@ export async function enter(c) {
   });
 
   if (ctx?.hint && tawafPoints.length > 0) ctx.hint.textContent = tawafPoints[0].title;
+
+  if (mobileControls) {
+    mobileControls.enable();
+  }
 
   tick();
 }
@@ -792,6 +1054,10 @@ export function exit() {
   scene = null;
   camera = null;
   controls = null;
+  if (mobileControls) {
+    mobileControls.disable();
+    mobileControls = null;
+  }
   tawafPoints = [];
   ctx = null;
 

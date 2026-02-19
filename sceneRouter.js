@@ -39,7 +39,6 @@ async function enterScene(sceneId) {
     }
   }
 
-  if (loadingOverlay) hide(loadingOverlay);
   if (sceneRoot) show(sceneRoot);
   await new Promise(r => requestAnimationFrame(r));
 
@@ -54,8 +53,50 @@ async function enterScene(sceneId) {
     audioEl: document.getElementById("sceneAudio"),
   };
 
-  if (typeof mod.enter === "function") await mod.enter(ctx);
-  else if (mod.default && typeof mod.default.enter === "function") await mod.default.enter(ctx);
+  try {
+    if (typeof mod.enter === "function") await mod.enter(ctx);
+    else if (mod.default && typeof mod.default.enter === "function") await mod.default.enter(ctx);
+  } catch (err) {
+    console.error("sceneRouter: scene enter failed for", sceneId, err);
+    if (loadingOverlay) hide(loadingOverlay);
+    // On failure, show main menu to avoid leaving user with hidden UI
+    if (sceneRoot) hide(sceneRoot);
+    if (mainMenu) show(mainMenu);
+    currentSceneId = null;
+    currentModule = null;
+    return;
+  }
+
+  if (loadingOverlay) hide(loadingOverlay);
+
+  // ✅ Show Disclaimer Panel (Updated: Skip for Haram)
+  if (sceneId !== "umrah_haram" && sceneId !== "al-haram") {
+    const disclaimerOverlay = document.getElementById("disclaimerOverlay");
+    if (disclaimerOverlay) {
+      show(disclaimerOverlay);
+      disclaimerOverlay.setAttribute("aria-hidden", "false");
+
+      const okBtn = document.getElementById("disclaimerOk");
+
+      // Stop video if it started auto-playing in background
+      if (ctx.videoEl) ctx.videoEl.pause();
+
+      if (okBtn) {
+        const onOk = () => {
+          hide(disclaimerOverlay);
+          disclaimerOverlay.setAttribute("aria-hidden", "true");
+          okBtn.removeEventListener("click", onOk);
+
+          // Resume video if it was supposed to be playing (or just try play)
+          // Since scene likely tried to play it, we can just play.
+          if (ctx.videoEl && ctx.videoEl.src) {
+            ctx.videoEl.play().catch(e => console.log("Video resume failed/not ready", e));
+          }
+        };
+        okBtn.addEventListener("click", onOk);
+      }
+    }
+  }
 
   currentSceneId = sceneId;
   currentModule = mod;

@@ -1,18 +1,15 @@
 // training.js (UPDATED)
 import { resolveUrl } from "./src/basePath.js";
-import { initTrainingCharacter3D, disposeTrainingCharacter3D } from "./trainingCharacter3d.js";
+import { initTrainingCharacter3D, disposeTrainingCharacter3D, setTrainingCharacterAction } from "./trainingCharacter3d.js";
 
 const NEXT_SCENE_NAME = "SCENE";
 
+// Training 1 (Before Safa Marwah)
 const TRAINING_CONFIG = {
   backgroundImage: "assets/bg/training_room_bg.jpg",
   backgroundFallbackColor: "#2a2520",
   silhouetteImage: "assets/ui/training_silhouette.png",
-
-  // ✅ GLB (training scene me character)
   characterGlb: "assets/scenes/umrah_haram/media/models/character.glb",
-
-  /** 4th audio played after last playlist item; SCENE button enables when this ends */
   nextStepAudio: "assets/media/audio/umrah/NextStep.mp3",
   playlist: [
     { video: "assets/media/videos/umrah/Kaba video compressed.mp4", audio: "assets/media/audio/umrah/UmrahNiyatFinal.mp3" },
@@ -20,6 +17,23 @@ const TRAINING_CONFIG = {
     { video: "assets/media/videos/umrah/Talbiyah.mp4", audio: "assets/media/audio/umrah/LabbaikBg.mp3" },
   ],
 };
+
+// Training 2 (After Safa Marwah) - Simple finish screen
+const TRAINING_CONFIG_2 = {
+  backgroundImage: "assets/bg/training_room_bg.jpg",
+  backgroundFallbackColor: "#2a2520",
+  silhouetteImage: "assets/ui/training_silhouette.png",
+  characterGlb: "assets/scenes/umrah_haram/media/models/character.glb", // User will replace later
+  nextStepAudio: null, // No next step audio - just finish
+  playlist: [
+    { video: "assets/media/videos/umrah2/Kaba video compressed.mp4", audio: "assets/media/audio/umrah2/Conclusion.mp3" },
+  ],
+};
+
+// Active configuration
+let activeConfig = TRAINING_CONFIG;
+// Persist selected pilgrimage mode ('umrah' or 'hajj')
+let PILGRIMAGE_MODE = 'umrah';
 
 const trainingRoot = document.getElementById("trainingRoot");
 const trainingBg = document.getElementById("trainingBg");
@@ -47,6 +61,10 @@ let pendingGo = false;
 
 let characterHost = null;
 
+// ✅ last-step audio play only once
+let nextStepOncePlayed = false;
+let nextStepEl = null;
+
 function forceHideTapOverlay() {
   if (tapToPlayOverlay) tapToPlayOverlay.classList.add("hidden");
 }
@@ -65,7 +83,6 @@ function setBackground() {
 }
 
 function setSilhouette() {
-  // Keep silhouette as fallback only (does not affect 3D host)
   if (!trainingCharacter || !TRAINING_CONFIG.silhouetteImage) return;
 
   const path = resolveUrl(TRAINING_CONFIG.silhouetteImage);
@@ -83,7 +100,6 @@ function ensureCharacterHost() {
     host = document.createElement("div");
     host.id = "trainingCharacter3dHost";
 
-    // ✅ place relative to trainingRoot (overlay on top of video)
     host.style.position = "absolute";
     host.style.right = "6%";
     host.style.bottom = "18%";
@@ -104,7 +120,6 @@ async function init3DCharacter() {
 
   disposeTrainingCharacter3D();
 
-  // IMPORTANT: host CSS here (screen placement)
   host.style.right = "14%";
   host.style.bottom = "12%";
   host.style.width = "26%";
@@ -115,18 +130,13 @@ async function init3DCharacter() {
 
   await initTrainingCharacter3D({
     host,
-    modelUrl: TRAINING_CONFIG.characterGlb,
+    modelUrl: activeConfig.characterGlb,
 
-    // ✅ model inside frame (left shift)
     modelScale: 1.14,
-   modelPos: new Vector3(-0.25, 0, 0),
-
+    modelPos: new Vector3(-0.25, 0, 0),
     modelRotY: 0,
 
-
-    // ✅ zoom out + slightly left camera
     camPos: new Vector3(-0.6, 1.6, 3.2),
-
     camLookAt: new Vector3(-0.25, 1.25, 0.0),
   });
 }
@@ -172,6 +182,12 @@ function hideDisclaimer() {
   disclaimerOverlay.setAttribute("aria-hidden", "true");
 }
 
+function stopNextStepAudio() {
+  if (!nextStepEl) return;
+  try { nextStepEl.pause(); } catch (_) { }
+  try { nextStepEl.currentTime = 0; } catch (_) { }
+}
+
 function stopBoth() {
   if (trainingVideo) {
     trainingVideo.pause();
@@ -180,6 +196,7 @@ function stopBoth() {
   if (trainingAudio) trainingAudio.pause();
   isPlaying = false;
   forceHideTapOverlay();
+  // Don't set idle here - this is called during loading too
 }
 
 function playBothFromStart() {
@@ -190,6 +207,9 @@ function playBothFromStart() {
   trainingAudio.currentTime = 0;
   trainingVideo.currentTime = 0;
   trainingVideo.loop = true;
+
+  // ✅ Character to talk when media starts
+  setTrainingCharacterAction('talk');
 
   Promise.all([trainingVideo.play(), trainingAudio.play()])
     .then(() => { isPlaying = true; })
@@ -214,13 +234,14 @@ function resumeBoth() {
 }
 
 function loadItem(index) {
-  const list = TRAINING_CONFIG.playlist;
+  const list = activeConfig.playlist;
   if (!list.length) return Promise.resolve({ ok: true });
 
   currentIndex = Math.max(0, Math.min(index, list.length - 1));
   const item = list[currentIndex];
 
   stopBoth();
+  stopNextStepAudio();
 
   const videoUrl = resolveUrl(item.video);
   const audioUrl = resolveUrl(item.audio);
@@ -283,20 +304,44 @@ function loadItem(index) {
 }
 
 function nextStep() {
-  const isLast = currentIndex >= TRAINING_CONFIG.playlist.length - 1;
+  const isLast = currentIndex >= activeConfig.playlist.length - 1;
+
   if (isLast) {
+    if (nextStepOncePlayed) return;
+    nextStepOncePlayed = true;
+
     stopBoth();
-    const nextStepSrc = TRAINING_CONFIG.nextStepAudio && resolveUrl(TRAINING_CONFIG.nextStepAudio);
-    if (nextStepSrc) {
-      const nextStepEl = new Audio(nextStepSrc);
-      nextStepEl.onended = () => setSkipState(true);
-      nextStepEl.onerror = () => setSkipState(true);
-      nextStepEl.play().catch(() => setSkipState(true));
-    } else {
+    stopNextStepAudio();
+
+    const nextStepSrc = activeConfig.nextStepAudio && resolveUrl(activeConfig.nextStepAudio);
+    if (!nextStepSrc) {
       setSkipState(true);
+      return;
     }
+
+    if (!nextStepEl) nextStepEl = new Audio();
+    nextStepEl.src = nextStepSrc;
+    nextStepEl.currentTime = 0;
+
+    setSkipState(false);
+
+    nextStepEl.onended = () => {
+      setSkipState(true);
+      // ✅ Character to idle when next step audio ends
+      setTrainingCharacterAction('idle');
+    };
+    nextStepEl.onerror = () => {
+      setSkipState(true);
+      setTrainingCharacterAction('idle');
+    };
+
+    nextStepEl.play().catch(() => {
+      setSkipState(true);
+      setTrainingCharacterAction('idle');
+    });
     return;
   }
+
   loadItem(currentIndex + 1).then((result) => {
     if (result && result.ok) playBothFromStart();
   });
@@ -319,6 +364,23 @@ function togglePause() {
 }
 
 function skipTraining() {
+  // ✅ Character to idle when FINISH button clicked
+  setTrainingCharacterAction('idle');
+
+  // Check if this is Training 2 (goes to main menu)
+  if (activeConfig === TRAINING_CONFIG_2) {
+    // Exit training
+    window.dispatchEvent(new CustomEvent("metamosque:exitTraining"));
+    // If a next scene was supplied (e.g., Safa -> Mina for Hajj), navigate there
+    if (nextSceneId && typeof nextSceneId === 'string' && nextSceneId.trim()) {
+      window.dispatchEvent(new CustomEvent("metamosque:goToScene", {
+        detail: { sceneName: nextSceneName, sceneId: nextSceneId }
+      }));
+    }
+    return;
+  }
+
+  // Training 1 flow (original behavior)
   pendingGo = true;
   showLoading("LOADING...");
   setTimeout(() => {
@@ -360,8 +422,11 @@ if (disclaimerOk) {
 if (trainingAudio) {
   trainingAudio.addEventListener("ended", () => {
     stopBoth();
-    const isLast = currentIndex >= (TRAINING_CONFIG.playlist.length - 1);
+    const isLast = currentIndex >= (activeConfig.playlist.length - 1);
     if (isLast) allFinished = true;
+
+    // ✅ Character to idle when audio ends
+    setTrainingCharacterAction('idle');
   });
 }
 
@@ -370,13 +435,24 @@ if (trainingVideo) {
     if (!trainingAudio) return;
     if (!trainingAudio.ended && !trainingAudio.paused) {
       trainingVideo.currentTime = 0;
-      trainingVideo.play().catch(() => {});
+      trainingVideo.play().catch(() => { });
     }
   });
 }
 
 window.addEventListener("metamosque:startTraining", async (e) => {
   forceHideTapOverlay();
+
+  const d = (e && e.detail) ? e.detail : {};
+  // Persist mode if provided by caller (main menu)
+  PILGRIMAGE_MODE = (d && typeof d.mode === 'string') ? d.mode : (window.PILGRIMAGE_MODE || PILGRIMAGE_MODE);
+  // Expose globally for other modules (safa_marwah uses this)
+  window.PILGRIMAGE_MODE = PILGRIMAGE_MODE;
+  const trainingId = (d && typeof d.trainingId === "number") ? d.trainingId : 1;
+
+  // Select configuration
+  activeConfig = (trainingId === 2) ? TRAINING_CONFIG_2 : TRAINING_CONFIG;
+
   setBackground();
   setSilhouette();
 
@@ -384,16 +460,41 @@ window.addEventListener("metamosque:startTraining", async (e) => {
   allFinished = false;
   pendingGo = false;
 
-  const d = (e && e.detail) ? e.detail : {};
+  nextStepOncePlayed = false;
+  stopNextStepAudio();
+
   nextSceneName = (d && typeof d.nextSceneName === "string") ? d.nextSceneName : NEXT_SCENE_NAME;
   nextSceneId = (d && typeof d.nextSceneId === "string") ? d.nextSceneId : "";
 
-  setSkipLabel(nextSceneName);
+  // Set button label based on training ID
+  const buttonLabel = (trainingId === 2) ? "FINISH" : nextSceneName;
+  setSkipLabel(buttonLabel);
   setSkipState(false);
+
+  // Hide/show buttons based on training ID
+  const nextBtn = document.querySelector('[data-action="trainNext"]');
+  const restartBtn = document.querySelector('[data-action="trainRestart"]');
+  const pauseBtn = document.querySelector('[data-action="trainPause"]');
+  const controlsContainer = document.querySelector('.trainingControls');
+
+  if (trainingId === 2) {
+    // Training 2: Hide NEXT, RESTART, PAUSE buttons
+    if (nextBtn) nextBtn.style.display = 'none';
+    if (restartBtn) restartBtn.style.display = 'none';
+    if (pauseBtn) pauseBtn.style.display = 'none';
+    // Add class to center FINISH button
+    if (controlsContainer) controlsContainer.classList.add('training2-mode');
+  } else {
+    // Training 1: Show all buttons
+    if (nextBtn) nextBtn.style.display = '';
+    if (restartBtn) restartBtn.style.display = '';
+    if (pauseBtn) pauseBtn.style.display = '';
+    // Remove training2-mode class
+    if (controlsContainer) controlsContainer.classList.remove('training2-mode');
+  }
 
   if (trainingRoot) trainingRoot.classList.remove("hidden");
 
-  // ✅ init 3D character
   try { await init3DCharacter(); } catch (err) { console.warn("Training character init failed:", err); }
 
   loadItem(0).then((result) => {
@@ -403,11 +504,13 @@ window.addEventListener("metamosque:startTraining", async (e) => {
 
 window.addEventListener("metamosque:exitTraining", () => {
   stopBoth();
+  stopNextStepAudio();
   hideLoading();
   hideDisclaimer();
   pendingGo = false;
 
-  // ✅ dispose 3D character
+  nextStepOncePlayed = false;
+
   disposeTrainingCharacter3D();
 
   if (trainingRoot) trainingRoot.classList.add("hidden");

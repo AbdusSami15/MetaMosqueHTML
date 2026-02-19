@@ -2,24 +2,36 @@
   {
     "id": "safa",
     "title": "Safa",
-    "center": [0, 0, 5],
-    "radius": 1.6,
+    "center": [
+      -119.203,
+      8.6,
+      -141.535
+    ],
+    "radius": 5,
     "video": "media/videos/safa1.mp4",
     "audio": "media/audio/safa1.mp3"
   },
   {
     "id": "running_start",
     "title": "Running Start",
-    "center": [0, 0, 0],
-    "radius": 1.6,
+    "center": [
+      -115.215,
+      5.6,
+      -91.864
+    ],
+    "radius": 7,
     "video": "media/videos/run_start.mp4",
     "audio": "media/audio/RunGreenLights.mp3"
   },
   {
     "id": "marwah",
     "title": "Marwah",
-    "center": [0, 0, -5],
-    "radius": 1.6,
+    "center": [
+      -117.157,
+      8.6,
+      234.938
+    ],
+    "radius": 5,
     "video": "media/videos/marwah1.mp4",
     "audio": "media/audio/marwah1.mp3"
   }

@@ -1,0 +1,47 @@
+{
+  "debug": true,
+  "cameraAutoFrame": false,
+  "cameraStart": [
+    -2.7478,
+    6.1908,
+    34.0676
+  ],
+  "cameraYaw": 0.0132,
+  "cameraPitch": -0.418644,
+  "model": {
+    "path": "media/models/mina_placeholder.glb",
+    "scale": 1,
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ]
+  },
+  "character": {
+    "path": "../umrah_haram/media/models/character.glb",
+    "scale": 1,
+    "followCamera": true,
+    "offset": [
+      2.0,
+      -0.15,
+      -4.0
+    ]
+  },
+  "points": [
+    {
+      "id": 1,
+      "video": "media/videos/MinaHD.mp4",
+      "audio": "media/audios/Minah1.mp3"
+    },
+    {
+      "id": 2,
+      "video": "media/videos/MinahVideo2.mp4",
+      "audio": "media/audios/Minah2.mp3"
+    }
+  ]
+}

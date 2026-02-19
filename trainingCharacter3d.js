@@ -7,6 +7,7 @@ let scene = null;
 let camera = null;
 let mixer = null;
 let clock = null;
+let loadedClips = [];
 
 let hostEl = null;
 let canvasEl = null;
@@ -235,67 +236,68 @@ export async function initTrainingCharacter3D(options = {}) {
     modelRoot.position.y -= minY;
   }
 
-    // Animation - ensure only one clip runs at a time (robust stop of others)
-    {
-      const clips = gltf.animations || [];
-      log(cfg, "Found clips:", clips.map((c) => c.name));
+  // Animation - ensure only one clip runs at a time (robust stop of others)
+  {
+    const clips = gltf.animations || [];
+    loadedClips = clips;
+    log(cfg, "Found clips:", clips.map((c) => c.name));
 
-      if (!clips.length) {
-        warn(cfg, "No animations found in model.");
+    if (!clips.length) {
+      warn(cfg, "No animations found in model.");
+    } else {
+      mixer = new THREE.AnimationMixer(modelRoot);
+      mixer.stopAllAction();
+      mixer.timeScale = 1;
+
+      // Create actions for all clips and stop/disable them explicitly
+      const actions = clips.map((c) => ({ clip: c, action: mixer.clipAction(c) }));
+      for (const { clip: c, action: a } of actions) {
+        if (!a) continue;
+        try { a.stop(); } catch { }
+        try { a.reset(); } catch { }
+        a.enabled = false;
+        a.setEffectiveWeight(0);
+        // set a safe loop mode (repeat) so it doesn't leave bones in odd states
+        try { a.setLoop(THREE.LoopRepeat, Infinity); } catch { }
+      }
+
+      // Pick preferred clip (strict), fallback to single clip if present
+      let clip = pickClipStrict(clips, cfg.preferredClips);
+      if (!clip && clips.length === 1) {
+        clip = clips[0];
+        warn(cfg, "Preferred clip not matched. Only one clip exists so playing:", clip.name);
+      }
+
+      if (!clip) {
+        warn(cfg, "No matching clip found. All actions will remain stopped.");
       } else {
-        mixer = new THREE.AnimationMixer(modelRoot);
-        mixer.stopAllAction();
-        mixer.timeScale = 1;
+        log(cfg, "Selected clip:", clip.name);
 
-        // Create actions for all clips and stop/disable them explicitly
-        const actions = clips.map((c) => ({ clip: c, action: mixer.clipAction(c) }));
-        for (const { clip: c, action: a } of actions) {
-          if (!a) continue;
-          try { a.stop(); } catch {}
-          try { a.reset(); } catch {}
-          a.enabled = false;
-          a.setEffectiveWeight(0);
-          // set a safe loop mode (repeat) so it doesn't leave bones in odd states
-          try { a.setLoop(THREE.LoopRepeat, Infinity); } catch {}
+        // Ensure all other actions remain stopped and unregistered
+        for (const c of clips) {
+          if (c === clip) continue;
+          try {
+            const other = mixer.clipAction(c);
+            if (other) {
+              other.stop();
+              other.enabled = false;
+              other.setEffectiveWeight(0);
+              mixer.uncacheAction(c, modelRoot);
+            }
+          } catch (e) { /* ignore */ }
         }
 
-        // Pick preferred clip (strict), fallback to single clip if present
-        let clip = pickClipStrict(clips, cfg.preferredClips);
-        if (!clip && clips.length === 1) {
-          clip = clips[0];
-          warn(cfg, "Preferred clip not matched. Only one clip exists so playing:", clip.name);
-        }
-
-        if (!clip) {
-          warn(cfg, "No matching clip found. All actions will remain stopped.");
-        } else {
-          log(cfg, "Selected clip:", clip.name);
-
-          // Ensure all other actions remain stopped and unregistered
-          for (const c of clips) {
-            if (c === clip) continue;
-            try {
-              const other = mixer.clipAction(c);
-              if (other) {
-                other.stop();
-                other.enabled = false;
-                other.setEffectiveWeight(0);
-                mixer.uncacheAction(c, modelRoot);
-              }
-            } catch (e) { /* ignore */ }
-          }
-
-          // Play the selected action only
-          const sel = mixer.clipAction(clip);
-          sel.reset();
-          sel.enabled = true;
-          sel.setEffectiveWeight(1);
-          try { sel.setLoop(THREE.LoopRepeat, Infinity); } catch {}
-          sel.play();
-          activeAction = sel;
-        }
+        // Play the selected action only
+        const sel = mixer.clipAction(clip);
+        sel.reset();
+        sel.enabled = true;
+        sel.setEffectiveWeight(1);
+        try { sel.setLoop(THREE.LoopRepeat, Infinity); } catch { }
+        sel.play();
+        activeAction = sel;
       }
     }
+  }
 
   clock = new THREE.Clock();
 
@@ -322,7 +324,7 @@ export function disposeTrainingCharacter3D() {
     try {
       // Strong cleanup
       if (modelRoot) mixer.uncacheRoot(modelRoot);
-    } catch {}
+    } catch { }
   }
   mixer = null;
   activeAction = null;
@@ -331,7 +333,7 @@ export function disposeTrainingCharacter3D() {
   if (scene && modelRoot) scene.remove(modelRoot);
 
   // Optional deep dispose (helps on repeated open/close)
-  try { disposeThreeDeep(); } catch {}
+  try { disposeThreeDeep(); } catch { }
 
   modelRoot = null;
 
@@ -343,4 +345,32 @@ export function disposeTrainingCharacter3D() {
   if (hostEl && canvasEl && canvasEl.parentNode === hostEl) hostEl.removeChild(canvasEl);
   canvasEl = null;
   hostEl = null;
+}
+
+export function setTrainingCharacterAction(actionName) {
+  if (!mixer || !modelRoot || !loadedClips.length) return;
+
+  const clip = pickClipStrict(loadedClips, [actionName]);
+  if (!clip) {
+    console.warn("[TrainingCharacter3D] Action not found:", actionName);
+    return;
+  }
+
+  if (activeAction && activeAction.getClip().name === clip.name) return; // Already playing
+
+  const newAction = mixer.clipAction(clip);
+  if (!newAction) return;
+
+  newAction.reset();
+  newAction.setLoop(THREE.LoopRepeat, Infinity);
+  newAction.clampWhenFinished = false;
+  newAction.enabled = true;
+  newAction.setEffectiveWeight(1);
+  newAction.play();
+
+  if (activeAction) {
+    activeAction.crossFadeTo(newAction, 0.3, true);
+  }
+
+  activeAction = newAction;
 }

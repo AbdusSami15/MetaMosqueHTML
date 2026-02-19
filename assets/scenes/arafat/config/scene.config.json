@@ -1,0 +1,52 @@
+{
+    "debug": true,
+    "cameraAutoFrame": false,
+    "cameraStart": [
+        -2.7478,
+        4.1908,
+        34.0676
+    ],
+    "cameraYaw": 0.0132,
+    "cameraPitch": -0.418644,
+    "model": {
+        "path": "media/models/arafat_placeholder.glb",
+        "scale": 1,
+        "position": [
+            0,
+            0,
+            0
+        ],
+        "rotation": [
+            0,
+            0,
+            0
+        ]
+    },
+    "character": {
+        "path": "../umrah_haram/media/models/character.glb",
+        "scale": 1.1,
+        "followCamera": true,
+        "offset": [
+            1.2,
+            -0.15,
+            -2.5
+        ]
+    },
+    "points": [
+        {
+            "id": 1,
+            "video": "media/videos/ArafaatVideo1.mp4",
+            "audio": "media/audios/Arafat1.mp3"
+        },
+        {
+            "id": 2,
+            "video": "media/videos/ArafaatVideo2.mp4",
+            "audio": "media/audios/Arafat2.mp3"
+        },
+        {
+            "id": 3,
+            "video": "media/videos/ArafaatHd.mp4",
+            "audio": "media/audios/Arafat3.mp3"
+        }
+    ]
+}

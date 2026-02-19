@@ -44,7 +44,11 @@ export function playTriggerMedia(ctx, item, options = {}) {
 
   if (videoOverlay) videoOverlay.classList.remove("hidden");
 
-  Promise.all([videoEl.play(), audioEl.play()]).catch(() => stopTriggerMedia(ctx));
+  Promise.all([videoEl.play(), audioEl.play()]).catch((e) => {
+    console.warn("Play interrupted or failed:", e);
+    // Do NOT stopTriggerMedia here, because sceneRouter might have paused it intentionally.
+    // If we stop, we hide the overlay, which is wrong.
+  });
 }
 
 export function restartTriggerMedia(ctx, item) {
@@ -57,7 +61,7 @@ export function togglePauseTriggerMedia(ctx) {
   if (!videoEl || !audioEl) return;
 
   if (videoEl.paused) {
-    Promise.all([videoEl.play(), audioEl.play()]).catch(() => {});
+    Promise.all([videoEl.play(), audioEl.play()]).catch(() => { });
   } else {
     videoEl.pause();
     audioEl.pause();

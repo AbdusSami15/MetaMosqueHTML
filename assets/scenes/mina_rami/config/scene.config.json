@@ -1,0 +1,42 @@
+{
+    "debug": true,
+    "cameraAutoFrame": false,
+    "cameraStart": [
+        0,
+        1.8,
+        34
+    ],
+    "cameraYaw": 0,
+    "cameraPitch": 0,
+    "model": {
+        "path": "media/models/rami_placeholder.glb",
+        "scale": 1,
+        "position": [
+            0,
+            0,
+            0
+        ],
+        "rotation": [
+            0,
+            0,
+            0
+        ]
+    },
+    "character": {
+        "path": "../umrah_haram/media/models/character.glb",
+        "scale": 1.1,
+        "followCamera": true,
+        "offset": [
+            1.2,
+            -0.15,
+            -2.5
+        ]
+    },
+    "points": [
+        {
+            "id": 1,
+            "video": "media/videos/RamiVideo1.mp4",
+            "audio": "media/audios/RamiAudio1.mp3"
+        }
+    ]
+}

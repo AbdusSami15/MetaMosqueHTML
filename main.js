@@ -75,7 +75,7 @@ function closeExit() {
 function confirmExit() {
   try {
     window.close();
-  } catch (_) {}
+  } catch (_) { }
   if (exitHint) show(exitHint);
 }
 
@@ -119,6 +119,16 @@ function hideLoading() {
 function proceedAfterDisclaimer() {
   const mode = pendingPilgrimage;
   pendingPilgrimage = null;
+  // Store mode globally so scenes (e.g. Safa Marwah) can check it later
+  window.PILGRIMAGE_MODE = mode;
+
+  // ✅ Debug: Print selected pilgrimage mode
+  const isHajj = mode === "hajj";
+  const isUmrah = mode === "umrah";
+  console.log("=== PILGRIMAGE SELECTION ===");
+  console.log("[" + (isHajj ? "✅" : "❌") + "] HAJJ  =", isHajj);
+  console.log("[" + (isUmrah ? "✅" : "❌") + "] UMRAH =", isUmrah);
+  console.log("window.PILGRIMAGE_MODE =", window.PILGRIMAGE_MODE);
   closeDisclaimer();
   closePilgrimage();
   showLoading();
@@ -155,10 +165,19 @@ document.addEventListener("click", (e) => {
       }
       return;
     }
-    return;
+    // sceneNextScene: default handler for scenes like umrah_haram → go to safa_marwah
+    // (safa_marwah uses e.stopPropagation() on its own SCENE button, so it won't hit this)
+    if (action === "sceneNextScene") {
+      if (window.sceneRouter && typeof window.sceneRouter.enterScene === "function") {
+        window.sceneRouter.enterScene("safa_marwah");
+      }
+      return;
+    }
+
   }
   if (exitOpen && e.target === exitOverlay) closeExit();
   if (pilgrimageOpen && e.target === pilgrimageOverlay) closePilgrimage();
+  if (disclaimerOpen && e.target === disclaimerOverlay) closeDisclaimer();
   if (disclaimerOpen && e.target === disclaimerOverlay) closeDisclaimer();
 });
 
@@ -168,9 +187,9 @@ if (exitYes) exitYes.addEventListener("click", confirmExit);
 window.addEventListener("keydown", (e) => {
   if (e.key && e.key.toLowerCase() === "f") {
     if (!document.fullscreenElement) {
-      document.documentElement.requestFullscreen().catch(() => {});
+      document.documentElement.requestFullscreen().catch(() => { });
     } else {
-      document.exitFullscreen().catch(() => {});
+      document.exitFullscreen().catch(() => { });
     }
   }
   if (e.key === "Escape") {
