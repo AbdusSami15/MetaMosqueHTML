@@ -9,6 +9,7 @@ import {
     restartTriggerMedia,
     togglePauseTriggerMedia
 } from "./media.js";
+import { MobileControls } from "./mobileControls.js";
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 let ctx = null;
@@ -16,6 +17,7 @@ let scene = null;
 let camera = null;
 let renderer = null;
 let animId = 0;
+let mobileControls = null;
 let envModel = null;
 let characterModel = null;
 let mixer = null;
@@ -89,10 +91,23 @@ function applyYawPitch() {
     camera.rotation.x = pitch;
 }
 
+function applyMobileLook() {
+    if (!mobileControls || !mobileControls.enabled) return;
+    // Transverse look logic matching Safa Marwah
+    yaw += mobileControls.lookVector.x;
+    pitch += mobileControls.lookVector.y;
+    applyYawPitch();
+}
+
 function step(dt) {
     if (!camera) return;
     let fwd = (keys["KeyW"] || keys["ArrowUp"] ? 1 : 0) - (keys["KeyS"] || keys["ArrowDown"] ? 1 : 0);
     let str = (keys["KeyD"] || keys["ArrowRight"] ? 1 : 0) - (keys["KeyA"] || keys["ArrowLeft"] ? 1 : 0);
+
+    if (mobileControls && mobileControls.enabled) {
+        fwd += mobileControls.moveVector.z;
+        str += mobileControls.moveVector.x;
+    }
 
     if (fwd === 0 && str === 0) {
         camera.position.y = WALK_Y;
@@ -247,6 +262,8 @@ function tick(t) {
 
     if (mixer) mixer.update(dt);
 
+    applyMobileLook();
+    if (mobileControls) mobileControls.update();
     step(dt);
     checkTrigger();
     updateCharacter(dt);
@@ -477,6 +494,20 @@ export async function enter(c) {
     const { canvas, basePath } = ctx;
     if (!canvas) return;
 
+    // ✅ HUD Standardization: Reset to neutral state on entry
+    const nextBtn = document.getElementById("sceneVideoNext");
+    const sceneBtn = document.getElementById("sceneNextSceneBtn");
+    if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.classList.remove("hudBtnDisabled");
+        nextBtn.style.display = "block";
+    }
+    if (sceneBtn) {
+        sceneBtn.disabled = true;
+        sceneBtn.classList.add("hudBtnDisabled");
+        sceneBtn.style.display = "block";
+    }
+
     let cfg = {};
     try {
         const res = await fetch(`${basePath}config/scene.config.json`);
@@ -614,6 +645,9 @@ export async function enter(c) {
     bindUI();
     if (ctx.hint) ctx.hint.textContent = "Muzdalifah Scene · Walk to the light";
 
+    mobileControls = new MobileControls();
+    if (mobileControls) mobileControls.enable();
+
     lastT = performance.now();
     animId = requestAnimationFrame(tick);
 }
@@ -628,6 +662,11 @@ export function exit() {
     window.removeEventListener("mouseup", onMouseUp);
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("resize", onResize);
+
+    if (mobileControls) {
+        mobileControls.disable();
+        mobileControls = null;
+    }
 
     stopTriggerMedia(ctx);
 

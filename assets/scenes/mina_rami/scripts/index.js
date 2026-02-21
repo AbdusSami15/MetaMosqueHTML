@@ -9,6 +9,7 @@ import {
     restartTriggerMedia,
     togglePauseTriggerMedia
 } from "./media.js";
+import { MobileControls } from "./mobileControls.js";
 
 // ─── Module state ─────────────────────────────────────────────────────────────
 let ctx = null;
@@ -16,6 +17,7 @@ let scene = null;
 let camera = null;
 let renderer = null;
 let animId = 0;
+let mobileControls = null;
 let envModel = null;
 let characterModel = null;
 let mixer = null;
@@ -23,18 +25,22 @@ let idleAction = null;
 let lastT = 0;
 
 // Sequencing & Character Movement
-let characterState = "START"; // "START", "WALKING", "AT_STONES"
+let characterState = "START"; // "START", "WALKING", "AT_STONES", "BALD_WAITING"
 let walkSpeed = 2.0;
-const RAMI_POS = new THREE.Vector3(0, 0, -20.0); // Placeholder Rama position
-const CHARACTER_POS = new THREE.Vector3(0, 0, 18.0);
-const TRIGGER_POS = new THREE.Vector3(0, 0, 18.0);
+const RAMI_POS = new THREE.Vector3(76.9866, 0, 9.3314);
+const CHARACTER_POS = new THREE.Vector3(91.9569, 0, 10.3015);
+const TRIGGER_POS = new THREE.Vector3(91.9569, 0, 10.3015);
 const TRIGGER_DIST = 4.0;
 
 // Sequential Media & Trigger
 let points = [];
 let activePointIdx = 0;
 let triggered = false;
+let ramiTriggered = false; // Flag for Rami phase
 let triggerMesh = null;
+
+// Projectiles
+let activeStones = [];
 
 // Input
 const keys = Object.create(null);
@@ -44,7 +50,7 @@ let dragging = false;
 
 // Settings
 let MOVE_SPEED = 5.0;
-let EYE_HEIGHT = 1.8;
+let EYE_HEIGHT = 2.8;
 let MIN_GROUND_Y = 0;
 let WALK_Y = 1.8;
 const LOOK_SENS = 0.0022;
@@ -78,10 +84,23 @@ function applyYawPitch() {
     camera.rotation.x = pitch;
 }
 
+function applyMobileLook() {
+    if (!mobileControls || !mobileControls.enabled) return;
+    // Transverse look logic matching Safa Marwah
+    yaw += mobileControls.lookVector.x;
+    pitch += mobileControls.lookVector.y;
+    applyYawPitch();
+}
+
 function step(dt) {
     if (!camera) return;
     let fwd = (keys["KeyW"] || keys["ArrowUp"] ? 1 : 0) - (keys["KeyS"] || keys["ArrowDown"] ? 1 : 0);
     let str = (keys["KeyD"] || keys["ArrowRight"] ? 1 : 0) - (keys["KeyA"] || keys["ArrowLeft"] ? 1 : 0);
+
+    if (mobileControls && mobileControls.enabled) {
+        fwd += mobileControls.moveVector.z;
+        str += mobileControls.moveVector.x;
+    }
 
     if (fwd === 0 && str === 0) {
         camera.position.y = WALK_Y;
@@ -116,6 +135,13 @@ function updateCharacter(dt) {
         } else {
             characterState = "AT_STONES";
             characterModel.position.copy(RAMI_POS);
+
+            // Imam reached destination, now show the particle for the player to trigger Rami
+            if (triggerMesh) {
+                triggerMesh.position.copy(RAMI_POS);
+                triggerMesh.visible = true;
+            }
+
             _tmpV.copy(camera.position);
             _tmpV.y = characterModel.position.y;
             characterModel.lookAt(_tmpV);
@@ -125,11 +151,17 @@ function updateCharacter(dt) {
                 if (idleAction) idleAction.play();
             }
         }
-    } else if (characterState === "AT_STONES") {
+    } else if (characterState === "RAMI_STARTED" || characterState === "AT_STONES") {
+        // Character is at stones, UI is shown or waiting
         characterModel.position.copy(RAMI_POS);
         _tmpV.copy(camera.position);
         _tmpV.y = characterModel.position.y;
         characterModel.lookAt(_tmpV);
+
+        // Safety: Ensure we aren't stuck in walk animation
+        if (mixer && !mixer.existingAction?.name?.includes("idle")) {
+            // Just let the current animation (idle) play out
+        }
     } else {
         characterModel.position.copy(CHARACTER_POS);
         _tmpV.copy(camera.position);
@@ -139,20 +171,90 @@ function updateCharacter(dt) {
 }
 
 function checkTrigger() {
-    if (triggered || !camera) return;
-    const dx = camera.position.x - TRIGGER_POS.x;
-    const dz = camera.position.z - TRIGGER_POS.z;
-    if (dx * dx + dz * dz < TRIGGER_DIST * TRIGGER_DIST) {
-        triggered = true;
-        if (triggerMesh) triggerMesh.visible = false;
-        if (points.length > 0) playTriggerMedia(ctx, points[0]);
-        bindUI();
-        if (ctx.hint) ctx.hint.textContent = "Media started · Use HUD to navigate";
+    if (!camera) return;
+
+    // 1. Initial Media Trigger
+    if (!triggered) {
+        const dx = camera.position.x - TRIGGER_POS.x;
+        const dz = camera.position.z - TRIGGER_POS.z;
+        if (dx * dx + dz * dz < TRIGGER_DIST * TRIGGER_DIST) {
+            triggered = true;
+            if (triggerMesh) triggerMesh.visible = false;
+            if (points.length > 0) playTriggerMedia(ctx, points[0]);
+            bindUI();
+            if (ctx.hint) ctx.hint.textContent = "Media started · Use HUD to navigate";
+        }
+    }
+    // 2. Rami Phase Trigger (only when Imam is already at stones)
+    else if (characterState === "AT_STONES" && !ramiTriggered) {
+        const dx = camera.position.x - RAMI_POS.x;
+        const dz = camera.position.z - RAMI_POS.z;
+        if (dx * dx + dz * dz < TRIGGER_DIST * TRIGGER_DIST) {
+            ramiTriggered = true;
+            if (triggerMesh) triggerMesh.visible = false;
+            showRamiUI();
+            if (ctx.hint) ctx.hint.textContent = "Click button to throw stones!";
+        }
+    }
+    // 3. Post-Rami (Bald) Final Media Trigger
+    else if (characterState === "BALD_WAITING" && !ramiTriggered) {
+        const dx = camera.position.x - RAMI_POS.x;
+        const dz = camera.position.z - RAMI_POS.z;
+        if (dx * dx + dz * dz < TRIGGER_DIST * TRIGGER_DIST) {
+            ramiTriggered = true;
+            if (triggerMesh) triggerMesh.visible = false;
+
+            // Play final media: GoziaratNew audio + RamiVideo1 video
+            const finalPoint = {
+                video: "media/videos/RamiVideo1.mp4", // RamiVideo1
+                audio: "media/audios/GoziaratNew.mp3", // GoziaratNew
+                title: "FINAL ZIARAT"
+            };
+            // Disable HUD "Next" during ziarat
+            const nextBtn = document.getElementById("sceneVideoNext");
+            const sceneBtn = document.getElementById("sceneNextSceneBtn");
+            if (nextBtn) {
+                nextBtn.disabled = true;
+                nextBtn.classList.add("hudBtnDisabled");
+            }
+            if (sceneBtn) sceneBtn.style.display = "none";
+
+            playTriggerMedia(ctx, finalPoint, {
+                onEnded: () => {
+                    localStorage.setItem("hajj_status", "completed");
+                    if (sceneBtn) {
+                        sceneBtn.style.display = "block";
+                        sceneBtn.disabled = false;
+                        sceneBtn.classList.remove("hudBtnDisabled");
+                        sceneBtn.onclick = (e) => {
+                            e.stopPropagation();
+                            stopTriggerMedia(ctx);
+                            if (window.sceneRouter && window.sceneRouter.enterScene) {
+                                window.sceneRouter.enterScene('umrah_haram');
+                            }
+                        };
+                    }
+                    if (ctx.hint) ctx.hint.textContent = "Final Ziarat complete. Proceed to Haram.";
+                }
+            });
+        }
     }
 }
 
 // ─── Event handlers ──────────────────────────────────────────────────────────
-function onKeyDown(e) { keys[e.code] = true; }
+function onKeyDown(e) {
+    keys[e.code] = true;
+
+    // Capture Position Feature (Press 'C')
+    if (e.code === "KeyC") {
+        if (camera) {
+            const p = camera.position;
+            const posStr = `[${p.x.toFixed(4)}, ${p.y.toFixed(4)}, ${p.z.toFixed(4)}]`;
+            console.log("%c[Capture Position]:", "color: #00ff00; font-weight: bold;", posStr);
+            if (ctx.hint) ctx.hint.textContent = `Captured: ${posStr}`;
+        }
+    }
+}
 function onKeyUp(e) { keys[e.code] = false; }
 function onMouseDown(e) {
     if (!ctx?.canvas || e.button !== 0) return;
@@ -176,6 +278,22 @@ function onResize() {
     renderer.setSize(w, h);
 }
 
+function updateStones(dt) {
+    for (let i = activeStones.length - 1; i >= 0; i--) {
+        const s = activeStones[i];
+        const moveDist = s.speed * dt;
+        s.mesh.position.addScaledVector(s.direction, moveDist);
+        s.distanceMoved += moveDist;
+
+        if (s.distanceMoved >= s.totalDistance) {
+            scene.remove(s.mesh);
+            if (s.mesh.geometry) s.mesh.geometry.dispose();
+            if (s.mesh.material) s.mesh.material.dispose();
+            activeStones.splice(i, 1);
+        }
+    }
+}
+
 function tick(t) {
     animId = requestAnimationFrame(tick);
     if (!scene || !renderer || !camera) return;
@@ -184,9 +302,12 @@ function tick(t) {
 
     if (mixer) mixer.update(dt);
 
+    applyMobileLook();
+    if (mobileControls) mobileControls.update();
     step(dt);
     checkTrigger();
     updateCharacter(dt);
+    updateStones(dt);
     renderer.render(scene, camera);
 }
 
@@ -211,6 +332,12 @@ function goNextPoint() {
         // Final video "Next" button clicked
         stopTriggerMedia(ctx);
         characterState = "WALKING";
+
+        // Keep particle hidden while Imam walks; it will appear in updateCharacter once he arrives
+        if (triggerMesh) {
+            triggerMesh.visible = false;
+        }
+
         if (mixer && characterModel?.animations) {
             mixer.stopAllAction();
             const walkClip = characterModel.animations.find(a => a.name.toLowerCase().includes("walk"));
@@ -218,6 +345,238 @@ function goNextPoint() {
         }
         if (ctx.hint) ctx.hint.textContent = "Moving to Jamarat...";
     }
+}
+
+// ─── Rami Interaction UI ──────────────────────────────────────────────────
+function showRamiUI() {
+    characterState = "RAMI_STARTED";
+    const ramiUI = document.createElement("div");
+    ramiUI.style.cssText = `
+        position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
+        display: flex; flex-direction: column; align-items: center; gap: 20px;
+        z-index: 5000; pointer-events: auto;
+    `;
+
+    const topLabel = document.createElement("div");
+    topLabel.style.cssText = `
+        background: rgba(0,0,0,0.7); color: #fff; padding: 10px 25px;
+        border-radius: 999px; font-weight: 800; font-size: 18px;
+        border: 2px solid #b07a12; letter-spacing: 1px;
+    `;
+    topLabel.textContent = "RAMI (JAMARAT): 0 / 7";
+    ramiUI.appendChild(topLabel);
+
+    const pickBtn = document.createElement("button");
+    pickBtn.style.cssText = `
+        width: 100px; height: 100px; border-radius: 50%;
+        border: 4px solid #b07a12; background: radial-gradient(#fff, #e2b45a);
+        cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        display: flex; align-items: center; justify-content: center;
+        transition: transform 0.1s;
+    `;
+    pickBtn.innerHTML = `<img src="assets/ui/al_haram.png" style="width:60%; opacity:0.8; filter:sepia(1) saturate(5);">`;
+
+    let picksCount = 0;
+    pickBtn.onclick = () => {
+        if (picksCount >= 7) return;
+        pickBtn.style.transform = "scale(0.9) translateY(5px)";
+        setTimeout(() => pickBtn.style.transform = "scale(1)", 100);
+
+        throwStone();
+
+        // Animation
+        if (mixer && characterModel.animations) {
+            mixer.stopAllAction();
+            // Try to find a throwing or bowing animation (similar to Muzdalifah)
+            const pickClip = characterModel.animations.find(a =>
+                a.name.toLowerCase().includes("pick") ||
+                a.name.toLowerCase().includes("bow") ||
+                a.name.toLowerCase().includes("throw")
+            );
+            if (pickClip) {
+                const action = mixer.clipAction(pickClip);
+                action.setLoop(THREE.LoopOnce);
+                action.clampWhenFinished = true;
+                action.play();
+
+                // Invert or adjust timeScale if it looks wrong (like we did in Muzdalifah if it was bowing)
+                // For now just play.
+
+                setTimeout(() => {
+                    mixer.stopAllAction();
+                    if (idleAction) idleAction.play();
+                }, 1500);
+            }
+        }
+
+        picksCount++;
+        topLabel.textContent = `RAMI (JAMARAT): ${picksCount} / 7`;
+
+        if (picksCount >= 7) {
+            pickBtn.style.opacity = "0.5";
+            pickBtn.style.pointerEvents = "none";
+            setTimeout(() => {
+                if (ramiUI.parentNode) ramiUI.parentNode.removeChild(ramiUI);
+
+                // Phase 1: Fade to black
+                showFadeSequence(() => {
+                    // Phase 2: Make Imam Bald & Reset for Final Trigger
+                    makeImamBald();
+                    characterState = "BALD_WAITING";
+                    ramiTriggered = false; // Reset for second trigger
+
+                    if (triggerMesh) {
+                        triggerMesh.position.copy(RAMI_POS);
+                        triggerMesh.visible = true;
+                    }
+
+                    if (ctx.hint) ctx.hint.textContent = "Rami complete! Visit Imam for final Ziarat.";
+                });
+            }, 800);
+        }
+    };
+    ramiUI.appendChild(pickBtn);
+
+    ctx.canvas.parentNode.appendChild(ramiUI);
+}
+
+function showSuccessPanel() {
+    const successOverlay = document.createElement("div");
+    successOverlay.style.cssText = `
+        position: fixed; inset: 0; background: rgba(0,0,0,0.6);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 20000; backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+    `;
+
+    const panel = document.createElement("div");
+    panel.style.cssText = `
+        width: 90%; max-width: 800px; background: #fff;
+        border-radius: 0; position: relative; padding: 80px 40px;
+        box-shadow: 0 40px 100px rgba(0,0,0,0.6); text-align: center;
+        border: none;
+    `;
+
+    const goldFrame = document.createElement("div");
+    goldFrame.style.cssText = `
+        position: absolute; inset: 0;
+        background: linear-gradient(180deg, #fff4c9, #e5b554 40%, #b07a12 60%, #fff4c9);
+        z-index: -1;
+    `;
+    panel.appendChild(goldFrame);
+
+    const whiteInner = document.createElement("div");
+    whiteInner.style.cssText = `
+        position: absolute; inset: 10px; background: #fff; z-index: -1;
+    `;
+    panel.appendChild(whiteInner);
+
+    const innerBorder = document.createElement("div");
+    innerBorder.style.cssText = `
+        position: absolute; inset: 30px; border: 3px solid #b07a12;
+        pointer-events: none;
+    `;
+    panel.appendChild(innerBorder);
+
+    const title = document.createElement("div");
+    title.style.cssText = `
+        font-size: 24px; font-weight: 800; color: #b07a12;
+        margin-bottom: 20px; line-height: 1.4; letter-spacing: 1px;
+    `;
+    title.textContent = "CONGRATULATIONS! YOU HAVE COMPLETED RAMI";
+    panel.appendChild(title);
+
+    const okBtn = document.createElement("button");
+    okBtn.style.cssText = `
+        min-width: 160px; padding: 16px 50px; border-radius: 999px;
+        border: 2px solid rgba(160, 110, 20, 0.6);
+        background: linear-gradient(#fff2c8, #e2b45a, #c68a1c);
+        color: #7a4b0d; font-weight: 800; cursor: pointer;
+        box-shadow: 0 4px 0 rgba(120,70,10,0.45), 0 15px 35px rgba(0,0,0,0.25);
+        font-size: 18px; letter-spacing: 1px;
+    `;
+    okBtn.textContent = "OK";
+    okBtn.onclick = () => {
+        if (successOverlay.parentNode) successOverlay.parentNode.removeChild(successOverlay);
+        if (window.sceneRouter) {
+            stopTriggerMedia(ctx);
+            window.sceneRouter.exitScene(); // Or load next scene if any
+        }
+    };
+    panel.appendChild(okBtn);
+
+    successOverlay.appendChild(panel);
+    document.body.appendChild(successOverlay);
+}
+
+function showFadeSequence(onDone) {
+    const fade = document.createElement("div");
+    fade.style.cssText = `
+        position: fixed; inset: 0; background: #000;
+        z-index: 10000; opacity: 0; transition: opacity 1.5s;
+        pointer-events: none;
+    `;
+    document.body.appendChild(fade);
+
+    // Fade In
+    setTimeout(() => { fade.style.opacity = "1"; }, 100);
+
+    // Fade Out after delay
+    setTimeout(() => {
+        if (onDone) onDone();
+        fade.style.opacity = "0";
+        setTimeout(() => {
+            if (fade.parentNode) fade.parentNode.removeChild(fade);
+        }, 1500);
+    }, 2500);
+}
+
+function makeImamBald() {
+    if (!characterModel) return;
+    characterModel.traverse(child => {
+        if (child.isMesh) {
+            const name = child.name.toLowerCase();
+            // Naming conventions for hair/cap in common avatars
+            if (name.includes("hair") || name.includes("cap") || name.includes("top") || name.includes("head_wear")) {
+                child.visible = false;
+            }
+        }
+    });
+}
+
+function throwStone() {
+    if (!scene || !camera) return;
+
+    const stoneGeo = new THREE.SphereGeometry(0.12, 8, 8);
+    const stoneMat = new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.8 });
+    const stone = new THREE.Mesh(stoneGeo, stoneMat);
+
+    // Start at camera position
+    stone.position.copy(camera.position);
+    scene.add(stone);
+
+    // Extract camera's forward direction to ensure it throws where player looks
+    const direction = new THREE.Vector3();
+    camera.getWorldDirection(direction);
+
+    // Add a slight upward arc
+    direction.y += 0.15;
+    direction.normalize();
+
+    const speed = 25.0; // Faster stone
+    const totalDist = 40.0; // Fly for a long distance
+
+    activeStones.push({
+        mesh: stone,
+        direction: direction,
+        speed: speed,
+        distanceMoved: 0,
+        totalDistance: totalDist
+    });
+
+    // Play Audio
+    const audio = new Audio(`${ctx.basePath}media/audios/BismillahiAllahuAkabar.mp3`);
+    audio.play().catch(() => { });
 }
 
 function bindUI() {
@@ -237,6 +596,20 @@ export async function enter(c) {
     ctx = c;
     const { canvas, basePath } = ctx;
     if (!canvas) return;
+
+    // ✅ HUD Standardization: Reset to neutral state on entry
+    const nextBtn = document.getElementById("sceneVideoNext");
+    const sceneBtn = document.getElementById("sceneNextSceneBtn");
+    if (nextBtn) {
+        nextBtn.disabled = false;
+        nextBtn.classList.remove("hudBtnDisabled");
+        nextBtn.style.display = "block";
+    }
+    if (sceneBtn) {
+        sceneBtn.disabled = true;
+        sceneBtn.classList.add("hudBtnDisabled");
+        sceneBtn.style.display = "block";
+    }
 
     let cfg = {};
     try {
@@ -296,11 +669,7 @@ export async function enter(c) {
     triggerMesh.position.copy(TRIGGER_POS);
     scene.add(triggerMesh);
 
-    // Ground plane
-    const ground = new THREE.Mesh(new THREE.PlaneGeometry(800, 800), new THREE.MeshLambertMaterial({ color: 0x8b7355 }));
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = MIN_GROUND_Y;
-    scene.add(ground);
+    // Environment model will provide the ground
 
     const loader = new GLTFLoader();
 
@@ -342,6 +711,10 @@ export async function enter(c) {
     window.addEventListener("resize", onResize);
 
     if (ctx.hint) ctx.hint.textContent = "Mina Rami Scene · Walk to the light";
+
+    mobileControls = new MobileControls();
+    if (mobileControls) mobileControls.enable();
+
     lastT = performance.now();
     animId = requestAnimationFrame(tick);
 }
@@ -355,6 +728,12 @@ export function exit() {
     window.removeEventListener("mouseup", onMouseUp);
     window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("resize", onResize);
+
+    if (mobileControls) {
+        mobileControls.disable();
+        mobileControls = null;
+    }
+
     stopTriggerMedia(ctx);
     if (renderer) renderer.dispose();
     scene = null; camera = null; renderer = null; ctx = null;

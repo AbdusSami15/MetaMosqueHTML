@@ -51,16 +51,11 @@ export class MobileControls {
 
 
   isMobile() {
-    // Simple check: user agent or touch capability AND screen width
     const ua = navigator.userAgent || navigator.vendor || window.opera;
     const isTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
     const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-
-    // Width check to exclude desktops with touch screens (unless requested otherwise)
-    // Let's be generous: if it has touch and is narrow, OR is explicit mobile UA.
     const isNarrow = window.innerWidth <= 1024;
-
-    return (isTouch && isNarrow) || isMobileUA;
+    return isMobileUA || (isTouch && isNarrow);
   }
 
   enable() {

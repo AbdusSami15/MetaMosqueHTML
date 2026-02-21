@@ -2,12 +2,12 @@
     "debug": true,
     "cameraAutoFrame": false,
     "cameraStart": [
-        0,
-        1.8,
-        34
+        96.4578,
+        4.2,
+        11.4301
     ],
-    "cameraYaw": 0,
-    "cameraPitch": 0,
+    "cameraYaw": 1.33,
+    "cameraPitch": -0.9,
     "model": {
         "path": "media/models/rami_placeholder.glb",
         "scale": 1,
@@ -36,7 +36,12 @@
         {
             "id": 1,
             "video": "media/videos/RamiVideo1.mp4",
-            "audio": "media/audios/RamiAudio1.mp3"
+            "audio": "media/audios/Rami1.mp3"
+        },
+        {
+            "id": 2,
+            "video": "media/videos/JamaratNew.mp4",
+            "audio": "media/audios/Rami2.mp3"
         }
     ]
 }

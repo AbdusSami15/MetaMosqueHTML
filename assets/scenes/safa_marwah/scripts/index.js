@@ -53,6 +53,8 @@ let duaAutoHideTimer = null;
 
 // Mobile controls
 let mobileControls = null;
+let isRunning = false;
+let runBtn = null;
 
 // ✅ Demo Character State
 let demoCharacter = null;
@@ -76,7 +78,8 @@ let dragging = false;
 let rafId = 0;
 let lastT = 0;
 
-const MOVE_SPEED = 50.0;
+const BASE_MOVE_SPEED = 5.0;
+const RUN_MOVE_SPEED = 10.0;
 const LOOK_SENS = 0.0022;
 
 const MARKER_RADIUS = 0.9;
@@ -404,7 +407,7 @@ function goNextPoint() {
         // After 10s (was 5s), switch to walk + Show Dua
         setTimeout(() => {
           // Only if still walking/active
-          if (demoCharacterWalking && demoCharacter.userData.isRunning) {
+          if (demoCharacter && demoCharacterWalking && demoCharacter.userData.isRunning) {
             playCharacterAction("walk");
             demoCharacter.userData.isRunning = false;
 
@@ -557,7 +560,7 @@ function onMouseMove(e) {
 function applyMobileLook() {
   if (!mobileControls || !mobileControls.enabled) return;
   yaw += mobileControls.lookVector.x;
-  pitch -= mobileControls.lookVector.y;
+  pitch += mobileControls.lookVector.y;
   applyYawPitch(yaw, pitch);
 }
 
@@ -597,7 +600,7 @@ function step(dt) {
     return;
   }
 
-  const speed = MOVE_SPEED * dt;
+  const speed = (isRunning ? RUN_MOVE_SPEED : BASE_MOVE_SPEED) * dt;
 
   const dir = new THREE.Vector3();
   camera.getWorldDirection(dir);
@@ -857,6 +860,23 @@ export async function enter(c) {
   mobileControls = new MobileControls();
   mobileControls.enable();
 
+  // RUN Button for Mobile
+  if (mobileControls.isMobile()) {
+    runBtn = document.createElement("div");
+    runBtn.className = "mobile-run-btn";
+    runBtn.textContent = "RUN";
+    document.body.appendChild(runBtn);
+
+    const startRun = (e) => { e.preventDefault(); isRunning = true; runBtn.classList.add("active"); };
+    const stopRun = (e) => { e.preventDefault(); isRunning = false; runBtn.classList.remove("active"); };
+
+    runBtn.addEventListener("touchstart", startRun, { passive: false });
+    runBtn.addEventListener("touchend", stopRun, { passive: false });
+    runBtn.addEventListener("mousedown", startRun);
+    runBtn.addEventListener("mouseup", stopRun);
+    runBtn.addEventListener("mouseleave", stopRun);
+  }
+
   // ✅ Load Shared 3D Character
   loadDemoCharacter(scene, basePath).then((model) => {
     if (!model) return;
@@ -1016,6 +1036,11 @@ export function exit() {
     mobileControls.disable();
     mobileControls = null;
   }
+  if (runBtn) {
+    if (runBtn.parentNode) runBtn.parentNode.removeChild(runBtn);
+    runBtn = null;
+  }
+  isRunning = false;
 
   if (renderer) {
     renderer.dispose();

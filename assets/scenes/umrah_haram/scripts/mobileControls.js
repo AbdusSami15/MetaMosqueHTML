@@ -43,15 +43,15 @@ export class MobileControls {
     const ua = navigator.userAgent || navigator.vendor || window.opera;
     const isTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
     const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    return isTouch || isMobileUA; // Simplified check
+    const isNarrow = window.innerWidth <= 1024;
+    return isMobileUA || (isTouch && isNarrow);
   }
 
   enable() {
     if (this.enabled) return;
     if (!this.isMobile()) {
-      // Create a debug flag or force enable if needed, but via options
-      // console.log("MobileControls: Not a mobile device.");
-      // return; 
+      console.log("MobileControls: Not a mobile device, skipping enable.");
+      return;
     }
 
     this.initUI(); // Re-check UI in case it was added late

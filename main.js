@@ -156,15 +156,7 @@ document.addEventListener("click", (e) => {
       if (pendingPilgrimage !== null) proceedAfterDisclaimer();
       return;
     }
-    if (action === "sceneBackToMenu") {
-      if (window.sceneRouter && typeof window.sceneRouter.exitScene === "function") {
-        window.sceneRouter.exitScene();
-      } else {
-        hide(sceneRoot);
-        show(mainMenu);
-      }
-      return;
-    }
+
     // sceneNextScene: default handler for scenes like umrah_haram → go to safa_marwah
     // (safa_marwah uses e.stopPropagation() on its own SCENE button, so it won't hit this)
     if (action === "sceneNextScene") {

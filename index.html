@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
@@ -7,7 +8,7 @@
 
   <!-- Base path for static hosts -->
   <script>
-    (function(){
+    (function () {
       var base = window.__BASE_PATH__;
       if (base === undefined || base === null) {
         var p = document.location.pathname;
@@ -64,7 +65,7 @@
 
           <button class="tile" data-scene="al-aqsa">
             <img class="tileIcon" src="./assets/ui/al_aqsa.png" alt="Al Aqsa & Dome of the Rock" />
-            <div class="tileLabel">AL AQSA &amp;<br/>DOME OF THE ROCK</div>
+            <div class="tileLabel">AL AQSA &amp;<br />DOME OF THE ROCK</div>
           </button>
 
           <button class="tile" data-scene="masjid-nabavi">
@@ -74,7 +75,7 @@
 
           <button class="tile" data-scene="sheikh-zayed">
             <img class="tileIcon" src="./assets/ui/sheikh_zayed.png" alt="Sheikh Zayed Grand Mosque" />
-            <div class="tileLabel">SHEIKH ZAYED<br/>GRAND MOSQUE</div>
+            <div class="tileLabel">SHEIKH ZAYED<br />GRAND MOSQUE</div>
           </button>
 
           <button class="tile" data-scene="hagia-sophia">
@@ -89,7 +90,7 @@
 
           <button class="tile" data-scene="mohammed-bin-abdul-wahab">
             <img class="tileIcon" src="./assets/ui/mohammed_bin_abdul_wahab.png" alt="Mohammed Bin Abdul Wahab" />
-            <div class="tileLabel">MOHAMMED BIN<br/>ABDUL WAHAB</div>
+            <div class="tileLabel">MOHAMMED BIN<br />ABDUL WAHAB</div>
           </button>
 
           <button class="tile" data-scene="muhammed-ali">
@@ -104,7 +105,7 @@
 
           <button class="tile" data-scene="baghdad">
             <img class="tileIcon" src="./assets/ui/mosque_city_baghdad.png" alt="Mosque City of Baghdad" />
-            <div class="tileLabel">MOSQUE CITY<br/>OF BAGHDAD</div>
+            <div class="tileLabel">MOSQUE CITY<br />OF BAGHDAD</div>
           </button>
         </div>
 
@@ -140,9 +141,12 @@
 
           <div class="optionsRight">
             <div class="followUsPill">FOLLOW US</div>
-            <button class="socialBtn" type="button" data-action="facebook" aria-label="Facebook"><img class="socialImg" src="./assets/ui/fb.png" alt="" /></button>
-            <button class="socialBtn" type="button" data-action="instagram" aria-label="Instagram"><img class="socialImg" src="./assets/ui/ig.png" alt="" /></button>
-            <button class="socialBtn" type="button" data-action="youtube" aria-label="YouTube"><img class="socialImg" src="./assets/ui/yt.png" alt="" /></button>
+            <button class="socialBtn" type="button" data-action="facebook" aria-label="Facebook"><img class="socialImg"
+                src="./assets/ui/fb.png" alt="" /></button>
+            <button class="socialBtn" type="button" data-action="instagram" aria-label="Instagram"><img
+                class="socialImg" src="./assets/ui/ig.png" alt="" /></button>
+            <button class="socialBtn" type="button" data-action="youtube" aria-label="YouTube"><img class="socialImg"
+                src="./assets/ui/yt.png" alt="" /></button>
           </div>
         </div>
       </div>
@@ -169,7 +173,7 @@
 
         <div class="pilgrimageFrame">
           <div class="pilgrimageTitle" id="pilgrimageTitle">
-            WHICH PILGRIMAGE DO YOU LIKE TO<br/>PERFORM?
+            WHICH PILGRIMAGE DO YOU LIKE TO<br />PERFORM?
           </div>
           <div class="pilgrimageButtons">
             <button class="pilgrimagePill" type="button" data-action="chooseHajj">HAJJ</button>
@@ -184,10 +188,10 @@
       <div class="disclaimerPanel" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
         <div class="disclaimerFrame">
           <div class="disclaimerText" id="disclaimerTitle">
-            THIS VIRTUAL GAME EXPERIENCE IS FOR<br/>
-            EDUCATIONAL PURPOSES ONLY AND<br/>
-            SHOULD NOT BE SEEN AS A SUBSTITUTE<br/>
-            FOR RELIGIOUS PRACTICES LIKE HAJJ,<br/>
+            THIS VIRTUAL GAME EXPERIENCE IS FOR<br />
+            EDUCATIONAL PURPOSES ONLY AND<br />
+            SHOULD NOT BE SEEN AS A SUBSTITUTE<br />
+            FOR RELIGIOUS PRACTICES LIKE HAJJ,<br />
             UMRAH, OR PRAYER.
           </div>
 
@@ -217,7 +221,7 @@
           <div class="duaSideArabic" id="duaSideArabic" dir="rtl" lang="ar"></div>
           <div class="duaSideLatin" id="duaSideLatin"></div>
 
-                  </div>
+        </div>
         <audio id="duaSideAudio" preload="metadata"></audio>
       </aside>
 
@@ -234,15 +238,8 @@
           <button class="hudBtn" type="button" id="sceneVideoRestart" aria-label="Restart">RESTART</button>
           <button class="hudBtn" type="button" id="sceneVideoPause" aria-label="Pause">PAUSE</button>
 
-          <button
-            class="hudBtn hudBtnDisabled"
-            type="button"
-            id="sceneNextSceneBtn"
-            data-action="sceneNextScene"
-            disabled
-            aria-disabled="true"
-            aria-label="Next scene"
-          >
+          <button class="hudBtn hudBtnDisabled" type="button" id="sceneNextSceneBtn" data-action="sceneNextScene"
+            disabled aria-disabled="true" aria-label="Next scene">
             SCENE
           </button>
         </div>
@@ -259,7 +256,7 @@
         <div class="look-zone" id="lookZone"></div>
       </div>
 
-      <button class="sceneBackBtn hudBtn" type="button" data-action="sceneBackToMenu" aria-label="Back to menu">BACK</button>
+
     </div>
 
     <!-- ================= TRAINING SCENE ================= -->
@@ -267,7 +264,6 @@
       <div class="trainingBg" id="trainingBg" aria-hidden="true"></div>
       <div class="trainingViewport">
         <div class="trainingHUD">
-<canvas id="trainingCharacterCanvas" class="trainingCharacterCanvas"></canvas>
 
           <div class="trainingVideoFrame" id="trainingVideoFrame">
             <div class="trainingVideoInner">
@@ -278,7 +274,6 @@
               </div>
             </div>
           </div>
-         <canvas class="trainingCharacterCanvas" id="trainingCharacterCanvas"></canvas>
 
           <div class="trainingControls">
             <button class="hudBtn" type="button" data-action="trainNext">NEXT</button>
@@ -295,7 +290,8 @@
   <script type="module" src="./sceneRouter.js"></script>
   <script src="./main.js"></script>
   <script type="module" src="./training.js"></script>
-<script type="module" src="./trainingCharacter3d.js"></script>
+  <script type="module" src="./trainingCharacter3d.js"></script>
 
 </body>
+
 </html>

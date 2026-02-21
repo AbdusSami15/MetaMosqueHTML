@@ -32,7 +32,7 @@ const DEFAULTS = {
   },
 
   backgroundAlpha: 0,
-  fov: 28,
+  fov: 40,
 
   camPos: new THREE.Vector3(-0.35, 1.5, 3.9),
   camLookAt: new THREE.Vector3(-0.35, 1.25, 0.0),

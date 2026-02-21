@@ -478,6 +478,7 @@ function advanceTawaf() {
     tawafComplete = true;
     if (ctx?.hint) ctx.hint.textContent = "Tawaf Complete";
     updateTawafMarker();
+    setNextSceneButton(); // ✅ Enable SCENE button on last point
     demoCharacterWalking = false;
     demoCharacterWalkTarget = null;
     demoCharacterArcWalk = null;
@@ -693,24 +694,13 @@ function tick() {
     // 3. Mobile Input
     if (mobileControls && mobileControls.enabled) {
       // Look
-      if (mobileControls.lookVector.x !== 0) {
-        // User reported "Left Drag -> Look Right".
-        // Left Drag = Negative dx = Negative lookVector.x.
-        // Previously: -= (-val) => += val (Positive rotation).
-        // If Positive Rotation = Look Right, we want Negative Rotation.
-        // So we use += (-val) => -= val (Negative rotation).
-        controls.getObject().rotation.y += mobileControls.lookVector.x;
-      }
+      controls.getObject().rotation.y -= mobileControls.lookVector.x;
       if (mobileControls.lookVector.y !== 0) {
-        // PointerLockControls wrapper structure:
-        // YawObject (controls.getObject()) -> PitchObject (children[0] = camera)
-        const pitchObject = controls.getObject().children[0];
-        if (pitchObject) {
-          pitchObject.rotation.x -= mobileControls.lookVector.y;
-          // Clamp pitch
-          const PI_2 = Math.PI / 2;
-          pitchObject.rotation.x = Math.max(-PI_2, Math.min(PI_2, pitchObject.rotation.x));
-        }
+        // Direct camera pitch rotation
+        camera.rotation.x -= mobileControls.lookVector.y;
+        // Clamp pitch
+        const PI_2 = Math.PI / 2;
+        camera.rotation.x = Math.max(-PI_2, Math.min(PI_2, camera.rotation.x));
       }
 
       // Move
@@ -865,6 +855,63 @@ function onResize() {
   renderer.setSize(w, h);
 }
 
+function showHajjChoicePanel() {
+  const overlay = document.createElement("div");
+  overlay.id = "hajjChoiceOverlay";
+  overlay.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.85); z-index:100000; display:flex; align-items:center; justify-content:center; backdrop-filter:blur(5px); transition: opacity 0.3s;";
+
+  const panel = document.createElement("div");
+  panel.style.cssText = "background:white; padding:40px; border-radius:20px; text-align:center; max-width:500px; border:3px solid #d4af37; box-shadow:0 10px 30px rgba(0,0,0,0.5); font-family:sans-serif;";
+
+  const title = document.createElement("h2");
+  title.innerText = "Hajj Rituals Progress";
+  title.style.cssText = "color:#d4af37; margin-bottom:20px; font-size:24px; text-transform:uppercase; letter-spacing:1px; margin-top:0;";
+
+  const msg = document.createElement("p");
+  msg.innerText = "Would you like to perform Tawaf-el-Ziarat or return to the Main Menu?";
+  msg.style.cssText = "color:#333; font-size:18px; line-height:1.6; margin-bottom:30px;";
+
+  const btnStyle = "padding:12px 30px; border-radius:30px; border:none; font-weight:bold; cursor:pointer; font-size:16px; transition:transform 0.2s; margin:10px; width:200px; display:inline-block;";
+
+  const tawafBtn = document.createElement("button");
+  tawafBtn.innerText = "Tawaf-el-Ziarat";
+  tawafBtn.style.cssText = btnStyle + "background:#d4af37; color:white; border:2px solid #d4af37;";
+  tawafBtn.onmouseover = () => tawafBtn.style.transform = "scale(1.05)";
+  tawafBtn.onmouseout = () => tawafBtn.style.transform = "scale(1)";
+
+  const menuBtn = document.createElement("button");
+  menuBtn.innerText = "Main Menu";
+  menuBtn.style.cssText = btnStyle + "background:white; color:#d4af37; border:2px solid #d4af37;";
+  menuBtn.onmouseover = () => menuBtn.style.transform = "scale(1.05)";
+  menuBtn.onmouseout = () => menuBtn.style.transform = "scale(1)";
+
+  tawafBtn.onclick = () => {
+    localStorage.removeItem("hajj_status");
+    if (tawafPoints.length > 0) {
+      // ✅ Swapping first tawaf audio for Hajj users arriving from Rami
+      tawafPoints[0].audio = "media/audio/HajjTawaf1.mp3";
+    }
+    document.body.removeChild(overlay);
+    unlockMovement();
+  };
+
+  menuBtn.onclick = () => {
+    localStorage.removeItem("hajj_status");
+    document.body.removeChild(overlay);
+    if (ctx?.window?.sceneRouter) ctx.window.sceneRouter.exitScene();
+    else if (window.sceneRouter) window.sceneRouter.exitScene();
+    else window.location.reload();
+  };
+
+  panel.appendChild(title);
+  panel.appendChild(msg);
+  panel.appendChild(tawafBtn);
+  panel.appendChild(menuBtn);
+  overlay.appendChild(panel);
+  document.body.appendChild(overlay);
+  lockMovement();
+}
+
 export async function enter(c) {
   ctx = c;
 
@@ -875,6 +922,22 @@ export async function enter(c) {
   ctx.closeBtn = ctx.closeBtn || found.closeBtn;
 
   if (ctx.closeBtn) ctx.closeBtn.style.display = "none";
+
+  // ✅ HUD Standardization: Reset to neutral state on entry
+  if (ctx.nextBtn) {
+    ctx.nextBtn.disabled = false;
+    ctx.nextBtn.classList.remove("hudBtnDisabled");
+    ctx.nextBtn.style.display = "block";
+  }
+  const sceneNextBtn = document.getElementById("sceneNextSceneBtn");
+  if (sceneNextBtn) {
+    sceneNextBtn.disabled = true; // ✅ Disabled until last point
+    sceneNextBtn.classList.add("hudBtnDisabled");
+    sceneNextBtn.style.display = "block";
+    sceneNextBtn.style.zIndex = "1000";
+    sceneNextBtn.style.pointerEvents = "auto";
+    sceneNextBtn.style.position = "relative";
+  }
 
   // reset dua
   haramDuaShown = false;
@@ -937,6 +1000,7 @@ export async function enter(c) {
   const h = canvas.clientHeight || window.innerHeight;
 
   camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 1000);
+  camera.rotation.order = "YXZ";
   camera.position.set(startX, startY, startZ);
   camera.lookAt(0, startY, 0);
 
@@ -1027,6 +1091,11 @@ export async function enter(c) {
 
   if (mobileControls) {
     mobileControls.enable();
+  }
+
+  // Check Hajj Completion
+  if (localStorage.getItem("hajj_status") === "completed") {
+    showHajjChoicePanel();
   }
 
   tick();

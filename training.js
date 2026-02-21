@@ -120,10 +120,10 @@ async function init3DCharacter() {
 
   disposeTrainingCharacter3D();
 
-  host.style.right = "14%";
-  host.style.bottom = "12%";
-  host.style.width = "26%";
-  host.style.height = "74%";
+  host.style.right = "7%";
+  host.style.bottom = "0%";
+  host.style.width = "40%";
+  host.style.height = "100%";
 
   const THREE_MOD = await import("three");
   const { Vector3 } = THREE_MOD;
@@ -132,12 +132,12 @@ async function init3DCharacter() {
     host,
     modelUrl: activeConfig.characterGlb,
 
-    modelScale: 1.14,
+    modelScale: 1.8,
     modelPos: new Vector3(-0.25, 0, 0),
     modelRotY: 0,
 
-    camPos: new Vector3(-0.6, 1.6, 3.2),
-    camLookAt: new Vector3(-0.25, 1.25, 0.0),
+    camPos: new Vector3(-0.6, 2.2, 3.8),
+    camLookAt: new Vector3(-0.25, 1.9, 0.0),
   });
 }
 
@@ -369,14 +369,8 @@ function skipTraining() {
 
   // Check if this is Training 2 (goes to main menu)
   if (activeConfig === TRAINING_CONFIG_2) {
-    // Exit training
+    // Exit training - this shows Main Menu via metamosque:exitTraining listener
     window.dispatchEvent(new CustomEvent("metamosque:exitTraining"));
-    // If a next scene was supplied (e.g., Safa -> Mina for Hajj), navigate there
-    if (nextSceneId && typeof nextSceneId === 'string' && nextSceneId.trim()) {
-      window.dispatchEvent(new CustomEvent("metamosque:goToScene", {
-        detail: { sceneName: nextSceneName, sceneId: nextSceneId }
-      }));
-    }
     return;
   }
 
@@ -478,12 +472,16 @@ window.addEventListener("metamosque:startTraining", async (e) => {
   const controlsContainer = document.querySelector('.trainingControls');
 
   if (trainingId === 2) {
-    // Training 2: Hide NEXT, RESTART, PAUSE buttons
+    // Training 2: Feed back: Add restart and pause button as well
     if (nextBtn) nextBtn.style.display = 'none';
-    if (restartBtn) restartBtn.style.display = 'none';
-    if (pauseBtn) pauseBtn.style.display = 'none';
-    // Add class to center FINISH button
-    if (controlsContainer) controlsContainer.classList.add('training2-mode');
+    if (restartBtn) restartBtn.style.display = '';
+    if (pauseBtn) pauseBtn.style.display = '';
+
+    // Make finish button interactable true
+    setSkipState(true);
+
+    // Remove centering for single button
+    if (controlsContainer) controlsContainer.classList.remove('training2-mode');
   } else {
     // Training 1: Show all buttons
     if (nextBtn) nextBtn.style.display = '';
