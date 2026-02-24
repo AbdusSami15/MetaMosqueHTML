@@ -10,6 +10,7 @@ if (typeof window !== "undefined") {
 const mainMenu = document.getElementById("mainMenu");
 const loadingOverlay = document.getElementById("loadingOverlay");
 const sceneRoot = document.getElementById("sceneRoot");
+const globalOptionsBtn = document.getElementById("globalOptionsBtn");
 
 const moduleCache = new Map();
 let currentSceneId = null;
@@ -23,6 +24,7 @@ async function enterScene(sceneId) {
 
   hide(mainMenu);
   if (loadingOverlay) show(loadingOverlay);
+  if (globalOptionsBtn) globalOptionsBtn.classList.remove("hidden");
 
   const sceneBaseUrl = resolveUrl(`assets/scenes/${sceneId}/`);
 

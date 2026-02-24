@@ -18,6 +18,7 @@ const pilgrimageOverlay = document.getElementById("pilgrimageOverlay");
 const disclaimerOverlay = document.getElementById("disclaimerOverlay");
 const trainingRoot = document.getElementById("trainingRoot");
 const sceneRoot = document.getElementById("sceneRoot");
+const globalOptionsBtn = document.getElementById("globalOptionsBtn");
 
 let exitOpen = false;
 let pilgrimageOpen = false;
@@ -27,10 +28,25 @@ let pendingPilgrimage = null;
 function show(el) { if (el) el.classList.remove("hidden"); }
 function hide(el) { if (el) el.classList.add("hidden"); }
 
+function showGlobalOptions() {
+  // Only show if we are in a 3D scene (sceneRoot is visible)
+  // AND NOT in trainingRoot
+  const isInScene = sceneRoot && !sceneRoot.classList.contains("hidden");
+  const isInTraining = trainingRoot && !trainingRoot.classList.contains("hidden");
+
+  if (isInScene && !isInTraining) {
+    show(globalOptionsBtn);
+  } else {
+    hide(globalOptionsBtn);
+  }
+}
+function hideGlobalOptions() { hide(globalOptionsBtn); }
+
 function showMainMenu() {
   show(mainMenu);
   hide(optionsScreen);
   hide(trainingRoot);
+  hideGlobalOptions();
   if (sceneRoot) hide(sceneRoot);
 }
 
@@ -81,6 +97,8 @@ function confirmExit() {
 
 function openPilgrimage() {
   if (!pilgrimageOverlay) return;
+  hide(mainMenu);
+  hideGlobalOptions();
   show(pilgrimageOverlay);
   pilgrimageOverlay.setAttribute("aria-hidden", "false");
   pilgrimageOpen = true;
@@ -131,12 +149,14 @@ function proceedAfterDisclaimer() {
   console.log("window.PILGRIMAGE_MODE =", window.PILGRIMAGE_MODE);
   closeDisclaimer();
   closePilgrimage();
+  hide(mainMenu); // Hide immediately
   showLoading();
   setTimeout(function () {
     hideLoading();
     hide(mainMenu);
     hide(optionsScreen);
     show(trainingRoot);
+    hideGlobalOptions(); // Explicitly hide during training
     window.dispatchEvent(new CustomEvent("metamosque:startTraining", { detail: { mode } }));
   }, 1200);
 }
@@ -147,7 +167,20 @@ document.addEventListener("click", (e) => {
     const action = actionBtn.getAttribute("data-action");
     if (action === "exit") { openExit(); return; }
     if (action === "options") { showOptions(); return; }
-    if (action === "backToMenu") { showMainMenu(); return; }
+    if (action === "backToMenu") {
+      // If we are "ingame" (either training or a loaded scene), 
+      // then "Back" in options should just close the options panel.
+      const isIngame = (sceneRoot && !sceneRoot.classList.contains("hidden")) ||
+        (trainingRoot && !trainingRoot.classList.contains("hidden"));
+
+      if (isIngame) {
+        hide(optionsScreen);
+        showGlobalOptions();
+      } else {
+        showMainMenu();
+      }
+      return;
+    }
     if (action === "metaimam") { openPilgrimage(); return; }
     if (action === "pilgrimageClose") { closePilgrimage(); return; }
     if (action === "chooseHajj") { openDisclaimer("hajj"); return; }
@@ -206,7 +239,7 @@ window.addEventListener("metamosque:goToScene", function (e) {
 });
 
 initOptionsLogo();
-showMainMenu();
+openPilgrimage();
 // ================= LINKS (SOCIAL + POLICY + CONTACT) =================
 (function () {
   const LINKS = {
