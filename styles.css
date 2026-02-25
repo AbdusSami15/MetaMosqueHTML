@@ -528,6 +528,10 @@ body {
   justify-content: center;
   z-index: 9998;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  border: clamp(10px, 1.5vw, 20px) solid transparent;
+  background-image: linear-gradient(#fff, #fff), linear-gradient(180deg, #fff1b8, #e1b14a 40%, #b07a12 60%, #fff1b8);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
 }
 
 .pilgrimageOverlay::after {
@@ -539,9 +543,9 @@ body {
 }
 
 .pilgrimagePanel {
-  width: min(92vw, 980px);
+  width: min(92vw, 880px);
   height: auto;
-  min-height: min(60vh, 480px);
+  min-height: min(60vh, 450px);
   position: relative;
   display: flex;
   align-items: center;
@@ -550,16 +554,13 @@ body {
   z-index: 20;
 }
 
-.pilgrimageBack {
-  display: none !important;
-}
-
 .pilgrimageFrame {
   width: 100%;
   background: #fff;
-  border-radius: clamp(16px, 2.5vw, 32px);
-  padding: clamp(32px, 6vw, 84px);
-  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.22);
+  border: clamp(3px, 0.6vw, 6px) solid #b07a12;
+  border-radius: 0;
+  padding: clamp(40px, 8vw, 96px) clamp(16px, 3vw, 48px);
+  box-shadow: none;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -568,32 +569,21 @@ body {
   overflow: visible;
 }
 
-.pilgrimageFrame::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border: clamp(6px, 1vw, 12px) solid transparent;
-  background: linear-gradient(180deg, #fff1b8, #e1b14a 40%, #b07a12 60%, #fff1b8) border-box;
-  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  z-index: 5;
-}
-
+.pilgrimageFrame::after,
 .pilgrimageFrame::before {
-  display: none;
+  display: none !important;
 }
 
 .pilgrimageTitle {
   text-align: center;
-  font-size: clamp(22px, 4.5vw, 42px);
-  font-weight: 700;
+  font-family: "Georgia", "Times New Roman", serif;
+  font-size: clamp(18px, 3.5vw, 32px);
+  font-weight: 500;
   letter-spacing: 2px;
   color: #b07a12;
-  margin-bottom: clamp(24px, 5vw, 50px);
+  margin-bottom: clamp(32px, 6vw, 64px);
   text-transform: uppercase;
+  line-height: 1.4;
 }
 
 .pilgrimageButtons {
@@ -806,7 +796,7 @@ body {
   grid-template-columns: 1fr;
   row-gap: 0;
   pointer-events: none;
-  padding: 2% 22% 6% 2%;
+  padding: 2vh 2vw;
   box-sizing: border-box;
 }
 
@@ -827,11 +817,11 @@ body {
   grid-column: 1;
   width: 100%;
   max-width: 100%;
-  height: 70%;
+  height: 85%;
   min-width: 0;
   min-height: 0;
   aspect-ratio: 16 / 9;
-  justify-self: start;
+  justify-self: center;
   align-self: end;
   max-height: 100%;
   border-radius: 8px;
@@ -1402,17 +1392,17 @@ body {
 }
 
 .sceneVideoOverlay {
-  position: absolute;
+  position: fixed;
   inset: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 0;
-  padding: 2% 22% 6% 2%;
+  padding: 5vh 5vw;
   box-sizing: border-box;
-  background: rgba(0, 0, 0, .7);
-  z-index: 100;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1000;
   pointer-events: auto;
 }
 
@@ -1422,9 +1412,9 @@ body {
 
 .sceneVideoFrame {
   width: 100%;
-  max-width: min(90vw, 90vh * 16/9);
-  height: 70%;
-  max-height: min(70vh, 70vw * 9/16);
+  max-width: 100vw;
+  height: 75%;
+  max-height: 75vh;
   min-width: 0;
   min-height: 0;
   aspect-ratio: 16 / 9;
@@ -1486,7 +1476,7 @@ body {
 
 .sceneVideoControls {
   width: 100%;
-  max-width: min(90vw, 90vh * 16/9);
+  max-width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1777,33 +1767,12 @@ body {
 
 .globalOptionsBtn {
   position: absolute;
-  top: clamp(12px, 2.5vw, 30px);
-  left: clamp(12px, 2.5vw, 30px);
-  width: clamp(44px, 6vw, 76px);
-  height: clamp(44px, 6vw, 76px);
+  top: clamp(16px, 3vw, 36px);
+  left: clamp(16px, 3vw, 36px);
   z-index: 9500;
-  border-radius: 50%;
-  border: 2px solid var(--goldStroke);
-  background: linear-gradient(var(--goldA), var(--goldB) 45%, var(--goldC));
-  color: var(--btnText);
-  font-size: clamp(24px, 3.2vw, 42px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
   transition: transform 0.2s, filter 0.2s;
-  padding: 0;
-  line-height: 1;
-}
-
-.globalOptionsBtn:hover {
-  filter: brightness(1.1);
-  transform: scale(1.05);
-}
-
-.globalOptionsBtn:active {
-  transform: scale(0.95);
+  /* override pillBtn defaults if needed */
+  min-width: auto;
 }
 
 .gearIcon {

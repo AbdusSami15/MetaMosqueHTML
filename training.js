@@ -448,7 +448,7 @@ window.addEventListener("metamosque:startTraining", async (e) => {
   activeConfig = (trainingId === 2) ? TRAINING_CONFIG_2 : TRAINING_CONFIG;
 
   setBackground();
-  setSilhouette();
+  // setSilhouette();
 
   currentIndex = 0;
   allFinished = false;
@@ -493,7 +493,7 @@ window.addEventListener("metamosque:startTraining", async (e) => {
 
   if (trainingRoot) trainingRoot.classList.remove("hidden");
 
-  try { await init3DCharacter(); } catch (err) { console.warn("Training character init failed:", err); }
+  // try { await init3DCharacter(); } catch (err) { console.warn("Training character init failed:", err); }
 
   loadItem(0).then((result) => {
     if (result && result.ok) playBothFromStart();
