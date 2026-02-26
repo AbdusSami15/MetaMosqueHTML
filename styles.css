@@ -44,19 +44,7 @@ body {
   display: none !important;
 }
 
-.menuFrame {
-  position: fixed;
-  inset: 0;
-  border: clamp(6px, 1vw, 12px) solid var(--frame);
-  border-radius: clamp(16px, 2.2vw, 32px);
-  background: linear-gradient(#efefef, #dcdcdc);
-  padding: clamp(10px, 1.2vw, 20px);
-  z-index: 100;
-}
-
-#optionsScreen {
-  z-index: 9600;
-}
+/* ================= OPTIONS SCREEN ================= */
 
 .menuInner {
   width: 100%;
@@ -1778,4 +1766,522 @@ body {
 .gearIcon {
   display: block;
   transform: translateY(-1px);
+}
+
+/* ================= NEW HOME SCREEN ================= */
+
+.homeScreen {
+  position: fixed;
+  inset: 0;
+  background: #ffffff;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  border: clamp(8px, 1.5vw, 20px) solid transparent;
+  background-image: linear-gradient(#fff, #fff), linear-gradient(180deg, #fff1b8, #e1b14a 40%, #b07a12 60%, #fff1b8);
+  background-origin: border-box;
+  background-clip: padding-box, border-box;
+}
+
+.homeScreen.hidden {
+  display: none !important;
+}
+
+.homeContainer {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 clamp(2%, 4%, 40px);
+  gap: 20px;
+  font-family: "Inter", sans-serif;
+  overflow: hidden;
+}
+
+/* Left Area: Character */
+.homeCharacterArea {
+  flex: 0 1 clamp(150px, 20vw, 400px);
+  height: 90%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: flex-start;
+  /* Align left as per mockup */
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.homeCharacterPlaceholder {
+  width: 100%;
+  height: clamp(80%, 90vh, 100%);
+  background-image: url('assets/ui/home_character.png');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  filter: drop-shadow(0 15px 30px rgba(0, 0, 0, 0.15));
+  z-index: 1;
+}
+
+.chatBtn {
+  margin-top: 10px;
+  margin-left: max(10px, 2vw);
+  /* Offset from left */
+  min-width: clamp(100px, 10vw, 130px) !important;
+  font-size: clamp(12px, 1.2vw, 15px) !important;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Center Area: Dialog */
+.homeMainContent {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 2vh;
+}
+
+.homeHeader {
+  text-align: center;
+  margin-bottom: 2vh;
+}
+
+.homeLogo {
+  width: clamp(60px, 8vw, 100px);
+  height: auto;
+}
+
+.homeTitle {
+  font-size: clamp(20px, 3.5vw, 36px);
+  color: #8c6a1e;
+  letter-spacing: 4px;
+  margin: 10px 0;
+  font-weight: 700;
+}
+
+.homeDialogBox {
+  width: min(95%, 800px);
+  margin: 0 auto;
+  background: #fff;
+  border: 5px solid #000;
+  /* Matching mockup border thickness */
+  border-radius: 50px;
+  padding: 60px clamp(15px, 4vw, 40px) 40px;
+  text-align: center;
+  position: relative;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: min-content;
+}
+
+.homeDialogText {
+  font-size: clamp(16px, 2.5vw, 28px);
+  line-height: 1.4;
+  color: #000;
+  font-weight: 700;
+}
+
+.homeDialogText p {
+  margin: 8px 0;
+}
+
+.homeDialogText .highlight {
+  color: #d4a017;
+}
+
+.homeDialogButtons {
+  display: flex;
+  justify-content: center;
+  gap: clamp(20px, 4vw, 60px);
+  margin-top: clamp(16px, 2.5vw, 32px);
+}
+
+/* Sidebar Area */
+.homeSidebar {
+  flex: 0 0 18%;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.sidebarGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-items: flex-end;
+}
+
+.homeSidebarBtn {
+  min-width: clamp(100px, 12vw, 180px) !important;
+  width: 100% !important;
+  height: clamp(36px, 6vh, 56px) !important;
+  border-radius: 28px !important;
+  font-size: clamp(12px, 1.1vw, 16px) !important;
+  font-weight: 800 !important;
+  white-space: nowrap !important;
+}
+
+/* Specific Pill Styles */
+.pillGold {
+  background: linear-gradient(#f9e29a, #d4a017, #8c6a1e) !important;
+  color: #5a3d00 !important;
+  border: 1px solid rgba(0, 0, 0, 0.2) !important;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.1) !important;
+  text-transform: capitalize !important;
+}
+
+.pillWhite {
+  background: #fff !important;
+  color: #8c6a1e !important;
+  border: 2px solid #8c6a1e !important;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.1) !important;
+}
+
+.pillContact {
+  background: #000 !important;
+  color: #d4a017 !important;
+  border: 2px solid #d4a017 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 0 15px !important;
+  font-size: 12px !important;
+}
+
+.contactIcon {
+  background: #d4a017;
+  color: #000;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+/* Login Form Styles */
+#homeLoginView {
+  width: 100%;
+  padding: 10px 0;
+}
+
+.loginHeaderArea {
+  position: absolute;
+  top: 25px;
+  /* Moved significantly lower as requested */
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 110;
+  width: auto;
+  display: flex;
+  justify-content: center;
+}
+
+.signUpBtn {
+  min-width: clamp(140px, 15vw, 180px) !important;
+  height: clamp(40px, 6vh, 50px) !important;
+  border-radius: 25px !important;
+  font-size: clamp(18px, 2.5vw, 24px) !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  /* Ensure centered text */
+}
+
+.loginForm {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+  /* Increased gap for better hierarchy */
+  width: 100%;
+}
+
+.inputWrapper {
+  position: relative;
+  width: min(85%, 400px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.inputIcon {
+  width: clamp(40px, 8vw, 55px);
+  height: clamp(40px, 8vw, 55px);
+  background: linear-gradient(135deg, #f9e29a, #d4a017, #8c6a1e);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: clamp(20px, 3vw, 24px);
+  border: 4px solid #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  left: -65px;
+  /* Moved even further left as requested */
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 10;
+}
+
+.inputIcon.invisible {
+  background: transparent;
+  border-color: transparent;
+  box-shadow: none;
+}
+
+/* Add padding to the input to avoid icon overlap if narrow */
+.homeInput {
+  flex: 1;
+  height: clamp(40px, 6vh, 48px);
+  border: 2px solid #000;
+  border-radius: 24px;
+  padding: 0 15px;
+  font-size: clamp(14px, 1.5vw, 18px);
+  text-align: center;
+  font-weight: 700;
+  color: #000;
+  background: #fff;
+  outline: none;
+}
+
+.homeInput::placeholder {
+  color: #999;
+}
+
+.forgotArea {
+  width: min(100%, 350px);
+  text-align: center;
+}
+
+.forgotLink {
+  color: #888;
+  font-size: 11px;
+  font-weight: 900;
+  text-decoration: none;
+}
+
+.loginActionArea {
+  margin-top: 15px;
+}
+
+.pillBlue {
+  background: #399bbd !important;
+  color: #fff !important;
+  border: none !important;
+  min-width: clamp(160px, 18vw, 200px) !important;
+  height: clamp(40px, 6vh, 50px) !important;
+  border-radius: 25px !important;
+  font-size: clamp(18px, 2.2vw, 22px) !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 15px rgba(57, 155, 189, 0.3) !important;
+}
+
+@media (max-width: 768px) {
+  .inputIcon {
+    left: -10px;
+  }
+}
+
+/* Footer */
+.homeFooter {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #d4a017;
+  font-weight: 700;
+  font-size: clamp(14px, 2vw, 22px);
+  padding: 0 4%;
+}
+
+.footerUrl {
+  margin: 0 auto;
+  color: #d4a017;
+  letter-spacing: 1px;
+}
+
+.footerTrademark {
+  position: absolute;
+  right: 4%;
+  font-size: 24px;
+}
+
+/* Responsive adjustments */
+
+/* Large Screens / Ultra wide */
+@media (min-width: 1800px) {
+  .homeContainer {
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+}
+
+/* Tablet and Smaller Laptops */
+@media (max-width: 1100px) {
+  .homeCharacterArea {
+    flex-basis: 22%;
+    min-width: 140px;
+  }
+
+  .homeSidebar {
+    flex-basis: 15%;
+  }
+
+  .homeSidebarBtn {
+    min-width: 130px !important;
+  }
+}
+
+/* Mobile Portrait */
+@media (max-width: 768px) {
+  .homeContainer {
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(40px, 8vh, 80px) 5% clamp(40px, 6vh, 60px);
+    gap: clamp(15px, 3vh, 30px);
+  }
+
+  .homeCharacterArea {
+    display: none;
+  }
+
+  .homeMainContent {
+    flex: 0 1 auto;
+    width: 100%;
+    padding-top: 0;
+  }
+
+  .homeDialogBox {
+    width: 100%;
+    border-radius: clamp(20px, 5vw, 30px);
+    padding: clamp(15px, 4vw, 25px) clamp(10px, 3vw, 20px);
+  }
+
+  .homeSidebar {
+    flex: 0 1 auto;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .sidebarGroup {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(8px, 2vw, 15px);
+  }
+
+  .homeSidebarBtn {
+    min-width: clamp(110px, 30vw, 140px) !important;
+    height: clamp(38px, 5vh, 46px) !important;
+  }
+
+  .homeFooter {
+    font-size: clamp(12px, 2.5vw, 16px);
+  }
+
+  .footerTrademark {
+    font-size: clamp(16px, 3vw, 22px);
+  }
+}
+
+/* Mobile Landscape (Very Small Height) */
+@media (max-height: 500px) and (orientation: landscape) {
+  .homeContainer {
+    padding: 10px 4%;
+    gap: 10px;
+  }
+
+  .homeMainContent {
+    padding-top: 0;
+  }
+
+  .homeHeader {
+    margin-bottom: 5px;
+  }
+
+  .homeLogo {
+    width: clamp(30px, 12vh, 45px);
+  }
+
+  .homeTitle {
+    margin: 2px 0;
+    font-size: clamp(16px, 5vh, 22px);
+    letter-spacing: 2px;
+  }
+
+  .homeDialogBox {
+    padding: 8px 15px;
+    border-radius: 20px;
+    border-width: 2px;
+    width: 90%;
+  }
+
+  .homeDialogText p {
+    margin: 2px 0;
+    font-size: clamp(12px, 4vh, 16px);
+  }
+
+  .homeDialogButtons {
+    margin-top: 5px;
+    gap: 10px;
+  }
+
+  .homeDialogButtons .pillBtn {
+    height: 30px !important;
+    font-size: 11px !important;
+    padding: 0 15px !important;
+  }
+
+  .homeCharacterArea {
+    flex-basis: 15%;
+    min-width: 100px;
+  }
+
+  .homeCharacterPlaceholder {
+    height: 70%;
+  }
+
+  .chatBtn {
+    display: none;
+    /* Hide chat button in small landscape to save space */
+  }
+
+  .homeSidebar {
+    flex-basis: 15%;
+  }
+
+  .sidebarGroup {
+    gap: 5px;
+  }
+
+  .homeSidebarBtn {
+    height: 30px !important;
+    font-size: 11px !important;
+    min-width: 90px !important;
+  }
+
+  .homeFooter {
+    font-size: 10px;
+    bottom: 2px;
+  }
+
+  .footerTrademark {
+    font-size: 14px;
+    right: 2%;
+  }
 }

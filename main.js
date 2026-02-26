@@ -16,9 +16,10 @@ const exitHint = document.getElementById("exitHint");
 const loadingOverlay = document.getElementById("loadingOverlay");
 const pilgrimageOverlay = document.getElementById("pilgrimageOverlay");
 const disclaimerOverlay = document.getElementById("disclaimerOverlay");
-const trainingRoot = document.getElementById("trainingRoot");
-const sceneRoot = document.getElementById("sceneRoot");
 const globalOptionsBtn = document.getElementById("globalOptionsBtn");
+const homeScreen = document.getElementById("homeScreen");
+const homePilgrimageView = document.getElementById("homePilgrimageView");
+const homeLoginView = document.getElementById("homeLoginView");
 
 let exitOpen = false;
 let pilgrimageOpen = false;
@@ -42,12 +43,20 @@ function showGlobalOptions() {
 }
 function hideGlobalOptions() { hide(globalOptionsBtn); }
 
-function showMainMenu() {
-  show(mainMenu);
+function showHomeScreen(view = "pilgrimage") {
+  show(homeScreen);
   hide(optionsScreen);
   hide(trainingRoot);
   hideGlobalOptions();
   if (sceneRoot) hide(sceneRoot);
+
+  if (view === "login") {
+    hide(homePilgrimageView);
+    show(homeLoginView);
+  } else {
+    show(homePilgrimageView);
+    hide(homeLoginView);
+  }
 }
 
 function showOptions() {
@@ -92,6 +101,7 @@ function confirmExit() {
   try {
     window.close();
   } catch (_) { }
+  if (homeScreen) show(homeScreen);
   if (exitHint) show(exitHint);
 }
 
@@ -149,11 +159,11 @@ function proceedAfterDisclaimer() {
   console.log("window.PILGRIMAGE_MODE =", window.PILGRIMAGE_MODE);
   closeDisclaimer();
   closePilgrimage();
-  hide(mainMenu); // Hide immediately
+  hide(homeScreen);
   showLoading();
   setTimeout(function () {
     hideLoading();
-    hide(mainMenu);
+    hide(homeScreen); // Ensure home screen is hidden
     hide(optionsScreen);
     show(trainingRoot);
     hideGlobalOptions(); // Explicitly hide during training
@@ -162,14 +172,28 @@ function proceedAfterDisclaimer() {
 }
 
 document.addEventListener("click", (e) => {
-  const actionBtn = e.target.closest("[data-action]");
+  const actionBtn = e.target.closest("[data-action], [data-scene]");
   if (actionBtn) {
+    const sceneId = actionBtn.getAttribute("data-scene");
+    if (sceneId) {
+      hide(homeScreen);
+      hide(mainMenu);
+      showLoading();
+      setTimeout(function () {
+        hideLoading();
+        if (window.sceneRouter && typeof window.sceneRouter.enterScene === "function") {
+          window.sceneRouter.enterScene(sceneId);
+        } else {
+          show(sceneRoot);
+        }
+      }, 1000);
+      return;
+    }
+
     const action = actionBtn.getAttribute("data-action");
     if (action === "exit") { openExit(); return; }
     if (action === "options") { showOptions(); return; }
     if (action === "backToMenu") {
-      // If we are "ingame" (either training or a loaded scene), 
-      // then "Back" in options should just close the options panel.
       const isIngame = (sceneRoot && !sceneRoot.classList.contains("hidden")) ||
         (trainingRoot && !trainingRoot.classList.contains("hidden"));
 
@@ -177,12 +201,14 @@ document.addEventListener("click", (e) => {
         hide(optionsScreen);
         showGlobalOptions();
       } else {
-        showMainMenu();
+        showHomeScreen();
       }
       return;
     }
     if (action === "metaimam") { openPilgrimage(); return; }
-    if (action === "pilgrimageClose") { closePilgrimage(); return; }
+    if (action === "menu") { showHomeScreen(); return; }
+    if (action === "login") { showHomeScreen("login"); return; }
+    if (action === "pilgrimageClose") { showHomeScreen(); return; }
     if (action === "chooseHajj") { openDisclaimer("hajj"); return; }
     if (action === "chooseUmrah") { openDisclaimer("umrah"); return; }
     if (action === "disclaimerOk") {
@@ -228,18 +254,19 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("metamosque:goToScene", function (e) {
   const raw = e.detail && e.detail.sceneId;
   const sceneId = (raw && String(raw).trim()) ? String(raw).trim() : "umrah_haram";
+  hide(homeScreen);
   hide(optionsScreen);
   hide(trainingRoot);
   if (window.sceneRouter && typeof window.sceneRouter.enterScene === "function") {
     window.sceneRouter.enterScene(sceneId);
   } else {
-    hide(mainMenu);
+    hide(homeScreen);
     if (sceneRoot) show(sceneRoot);
   }
 });
 
 initOptionsLogo();
-openPilgrimage();
+showHomeScreen();
 // ================= LINKS (SOCIAL + POLICY + CONTACT) =================
 (function () {
   const LINKS = {
