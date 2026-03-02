@@ -847,12 +847,16 @@ function tick() {
 }
 
 function onResize() {
-  if (!renderer || !camera || !ctx?.canvas) return;
-  const w = ctx.canvas.clientWidth || window.innerWidth;
-  const h = ctx.canvas.clientHeight || window.innerHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+  if (window.sceneRouter && window.sceneRouter.handleSceneResize) {
+    window.sceneRouter.handleSceneResize(camera, renderer, ctx.canvas);
+  } else {
+    if (!renderer || !camera || !ctx?.canvas) return;
+    const w = ctx.canvas.clientWidth || window.innerWidth;
+    const h = ctx.canvas.clientHeight || window.innerHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
 }
 
 function showHajjChoicePanel() {

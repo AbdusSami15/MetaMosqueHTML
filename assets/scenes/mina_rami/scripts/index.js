@@ -270,12 +270,16 @@ function onMouseMove(e) {
 }
 
 function onResize() {
-    if (!ctx?.canvas || !camera || !renderer) return;
-    const w = ctx.canvas.clientWidth;
-    const h = ctx.canvas.clientHeight;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+    if (window.sceneRouter && window.sceneRouter.handleSceneResize) {
+        window.sceneRouter.handleSceneResize(camera, renderer, ctx.canvas);
+    } else {
+        if (!ctx?.canvas || !camera || !renderer) return;
+        const w = ctx.canvas.clientWidth;
+        const h = ctx.canvas.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
 }
 
 function updateStones(dt) {
@@ -348,46 +352,29 @@ function goNextPoint() {
 }
 
 // ─── Rami Interaction UI ──────────────────────────────────────────────────
+// ─── Rami Interaction UI ──────────────────────────────────────────────────
 function showRamiUI() {
     characterState = "RAMI_STARTED";
     const ramiUI = document.createElement("div");
-    ramiUI.style.cssText = `
-        position: fixed; bottom: 80px; left: 50%; transform: translateX(-50%);
-        display: flex; flex-direction: column; align-items: center; gap: 20px;
-        z-index: 5000; pointer-events: auto;
-    `;
+    ramiUI.className = "sceneInteractiveUI";
 
     const topLabel = document.createElement("div");
-    topLabel.style.cssText = `
-        background: rgba(0,0,0,0.7); color: #fff; padding: 10px 25px;
-        border-radius: 999px; font-weight: 800; font-size: 18px;
-        border: 2px solid #b07a12; letter-spacing: 1px;
-    `;
+    topLabel.className = "sceneCounterLabel";
     topLabel.textContent = "RAMI (JAMARAT): 0 / 7";
     ramiUI.appendChild(topLabel);
 
     const pickBtn = document.createElement("button");
-    pickBtn.style.cssText = `
-        width: 100px; height: 100px; border-radius: 50%;
-        border: 4px solid #b07a12; background: radial-gradient(#fff, #e2b45a);
-        cursor: pointer; box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-        display: flex; align-items: center; justify-content: center;
-        transition: transform 0.1s;
-    `;
-    pickBtn.innerHTML = `<img src="assets/ui/al_haram.png" style="width:60%; opacity:0.8; filter:sepia(1) saturate(5);">`;
+    pickBtn.className = "sceneActionBtn";
+    pickBtn.innerHTML = `<img src="assets/ui/al_haram.png">`;
 
     let picksCount = 0;
     pickBtn.onclick = () => {
         if (picksCount >= 7) return;
-        pickBtn.style.transform = "scale(0.9) translateY(5px)";
-        setTimeout(() => pickBtn.style.transform = "scale(1)", 100);
-
         throwStone();
 
         // Animation
         if (mixer && characterModel.animations) {
             mixer.stopAllAction();
-            // Try to find a throwing or bowing animation (similar to Muzdalifah)
             const pickClip = characterModel.animations.find(a =>
                 a.name.toLowerCase().includes("pick") ||
                 a.name.toLowerCase().includes("bow") ||
@@ -398,9 +385,6 @@ function showRamiUI() {
                 action.setLoop(THREE.LoopOnce);
                 action.clampWhenFinished = true;
                 action.play();
-
-                // Invert or adjust timeScale if it looks wrong (like we did in Muzdalifah if it was bowing)
-                // For now just play.
 
                 setTimeout(() => {
                     mixer.stopAllAction();
@@ -442,65 +426,36 @@ function showRamiUI() {
 
 function showSuccessPanel() {
     const successOverlay = document.createElement("div");
-    successOverlay.style.cssText = `
-        position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-        display: flex; align-items: center; justify-content: center;
-        z-index: 20000; backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-    `;
+    successOverlay.className = "successOverlay";
 
     const panel = document.createElement("div");
-    panel.style.cssText = `
-        width: 90%; max-width: 800px; background: #fff;
-        border-radius: 0; position: relative; padding: 80px 40px;
-        box-shadow: 0 40px 100px rgba(0,0,0,0.6); text-align: center;
-        border: none;
-    `;
+    panel.className = "successPanel";
 
     const goldFrame = document.createElement("div");
-    goldFrame.style.cssText = `
-        position: absolute; inset: 0;
-        background: linear-gradient(180deg, #fff4c9, #e5b554 40%, #b07a12 60%, #fff4c9);
-        z-index: -1;
-    `;
+    goldFrame.className = "successGoldFrame";
     panel.appendChild(goldFrame);
 
     const whiteInner = document.createElement("div");
-    whiteInner.style.cssText = `
-        position: absolute; inset: 10px; background: #fff; z-index: -1;
-    `;
+    whiteInner.className = "successWhiteInner";
     panel.appendChild(whiteInner);
 
     const innerBorder = document.createElement("div");
-    innerBorder.style.cssText = `
-        position: absolute; inset: 30px; border: 3px solid #b07a12;
-        pointer-events: none;
-    `;
+    innerBorder.className = "successInnerBorder";
     panel.appendChild(innerBorder);
 
     const title = document.createElement("div");
-    title.style.cssText = `
-        font-size: 24px; font-weight: 800; color: #b07a12;
-        margin-bottom: 20px; line-height: 1.4; letter-spacing: 1px;
-    `;
+    title.className = "successTitle";
     title.textContent = "CONGRATULATIONS! YOU HAVE COMPLETED RAMI";
     panel.appendChild(title);
 
     const okBtn = document.createElement("button");
-    okBtn.style.cssText = `
-        min-width: 160px; padding: 16px 50px; border-radius: 999px;
-        border: 2px solid rgba(160, 110, 20, 0.6);
-        background: linear-gradient(#fff2c8, #e2b45a, #c68a1c);
-        color: #7a4b0d; font-weight: 800; cursor: pointer;
-        box-shadow: 0 4px 0 rgba(120,70,10,0.45), 0 15px 35px rgba(0,0,0,0.25);
-        font-size: 18px; letter-spacing: 1px;
-    `;
+    okBtn.className = "successBtn";
     okBtn.textContent = "OK";
     okBtn.onclick = () => {
         if (successOverlay.parentNode) successOverlay.parentNode.removeChild(successOverlay);
         if (window.sceneRouter) {
             stopTriggerMedia(ctx);
-            window.sceneRouter.exitScene(); // Or load next scene if any
+            window.sceneRouter.exitScene();
         }
     };
     panel.appendChild(okBtn);

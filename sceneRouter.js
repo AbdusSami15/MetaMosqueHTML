@@ -20,6 +20,7 @@ function show(el) { if (el) el.classList.remove("hidden"); }
 function hide(el) { if (el) el.classList.add("hidden"); }
 
 async function enterScene(sceneId) {
+  if (typeof window.stopHomeIntro === "function") window.stopHomeIntro();
   if (currentSceneId) exitScene();
 
   hide(mainMenu);
@@ -115,4 +116,24 @@ function exitScene() {
   if (mainMenu) show(mainMenu);
 }
 
-window.sceneRouter = { enterScene, exitScene };
+function handleSceneResize(camera, renderer, canvas) {
+  if (!camera || !renderer || !canvas) return;
+  const w = canvas.clientWidth;
+  const h = canvas.clientHeight;
+
+  camera.aspect = w / h;
+
+  // FOV scaling: if portrait, slightly increase FOV to compensate for narrow width
+  if (w < h) {
+    // Increase FOV proportionally but clamp it
+    const targetFov = 70 * (h / w) * 0.8;
+    camera.fov = Math.min(95, Math.max(70, targetFov));
+  } else {
+    camera.fov = 70;
+  }
+
+  camera.updateProjectionMatrix();
+  renderer.setSize(w, h, false);
+}
+
+window.sceneRouter = { enterScene, exitScene, handleSceneResize };

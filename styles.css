@@ -46,6 +46,23 @@ body {
 
 /* ================= OPTIONS SCREEN ================= */
 
+.menuFrame {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  /* Higher than sceneRoot (9100) and other overlays */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+.menuFrame.hidden {
+  display: none !important;
+}
+
 .menuInner {
   width: 100%;
   height: 100%;
@@ -1754,13 +1771,20 @@ body {
 /* ================= GLOBAL OPTIONS BUTTON ================= */
 
 .globalOptionsBtn {
-  position: absolute;
-  top: clamp(16px, 3vw, 36px);
-  left: clamp(16px, 3vw, 36px);
-  z-index: 9500;
+  position: fixed !important;
+  top: clamp(16px, 3vw, 30px) !important;
+  right: clamp(16px, 3vw, 30px) !important;
+  /* Move to top-right as standard */
+  left: auto !important;
+  z-index: 9999 !important;
+  /* Above sceneRoot (9100) */
   transition: transform 0.2s, filter 0.2s;
-  /* override pillBtn defaults if needed */
-  min-width: auto;
+  min-width: clamp(100px, 12vw, 150px) !important;
+  height: clamp(36px, 5vh, 44px) !important;
+  pointer-events: auto !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
 }
 
 .gearIcon {
@@ -1972,13 +1996,11 @@ body {
 }
 
 .loginHeaderArea {
-  position: absolute;
-  top: 25px;
-  /* Moved significantly lower as requested */
-  left: 50%;
-  transform: translate(-50%, -50%);
-  z-index: 110;
-  width: auto;
+  position: relative;
+  /* Keep inside natural flow */
+  margin-bottom: 30px;
+  /* Space above username field */
+  width: 100%;
   display: flex;
   justify-content: center;
 }
@@ -2009,6 +2031,7 @@ body {
 .inputWrapper {
   position: relative;
   width: min(85%, 400px);
+  /* Match input width */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2017,7 +2040,7 @@ body {
 .inputIcon {
   width: clamp(40px, 8vw, 55px);
   height: clamp(40px, 8vw, 55px);
-  background: linear-gradient(135deg, #f9e29a, #d4a017, #8c6a1e);
+  background: linear-gradient(135deg, #f3d08a, #d4a017, #8c6a1e);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -2025,10 +2048,10 @@ body {
   color: #fff;
   font-size: clamp(20px, 3vw, 24px);
   border: 4px solid #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   position: absolute;
-  left: -65px;
-  /* Moved even further left as requested */
+  /* Pushed further left to create a clear gap from the input boundary */
+  left: -75px;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
@@ -2042,7 +2065,8 @@ body {
 
 /* Add padding to the input to avoid icon overlap if narrow */
 .homeInput {
-  flex: 1;
+  width: 100%;
+  /* Spans full wrapper width */
   height: clamp(40px, 6vh, 48px);
   border: 2px solid #000;
   border-radius: 24px;
@@ -2085,6 +2109,52 @@ body {
   font-size: clamp(18px, 2.2vw, 22px) !important;
   font-weight: 800 !important;
   box-shadow: 0 4px 15px rgba(57, 155, 189, 0.3) !important;
+}
+
+.toggleAccountArea {
+  margin-top: 20px;
+  font-size: clamp(14px, 2vw, 18px);
+  color: #666;
+  font-weight: 500;
+}
+
+.toggleAccountLink {
+  color: #399bbd;
+  font-weight: 700;
+  cursor: pointer;
+  margin-left: 5px;
+  text-decoration: underline;
+  transition: opacity 0.2s;
+}
+
+.toggleAccountLink:hover {
+  opacity: 0.8;
+}
+
+.authStatusMessage {
+  padding: 10px;
+  margin-bottom: 15px;
+  border-radius: 8px;
+  font-size: 14px;
+  text-align: center;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.authStatusMessage.error {
+  background: #ffe6e6;
+  color: #bf3030;
+  border: 1px solid #ffcccc;
+}
+
+.authStatusMessage.success {
+  background: #e6ffed;
+  color: #247a3d;
+  border: 1px solid #ccffda;
+}
+
+.hidden {
+  display: none !important;
 }
 
 @media (max-width: 768px) {
@@ -2284,4 +2354,131 @@ body {
     font-size: 14px;
     right: 2%;
   }
+}
+
+/* ================= SCENE INTERACTIVE UI (Rami, Stones) ================= */
+
+.sceneInteractiveUI {
+  position: fixed;
+  bottom: clamp(60px, 12vh, 120px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px, 2vh, 20px);
+  z-index: 5000;
+  pointer-events: none;
+  width: 90%;
+}
+
+.sceneInteractiveUI * {
+  pointer-events: auto;
+}
+
+.sceneCounterLabel {
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: #fff;
+  padding: clamp(8px, 1.5vh, 12px) clamp(20px, 4vw, 36px);
+  border-radius: 999px;
+  font-weight: 800;
+  font-size: clamp(14px, 2vw, 22px);
+  border: 2px solid #b07a12;
+  letter-spacing: 1.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  text-align: center;
+}
+
+.sceneActionBtn {
+  width: clamp(80px, 15vh, 120px);
+  height: clamp(80px, 15vh, 120px);
+  border-radius: 50%;
+  border: clamp(3px, 0.5vw, 5px) solid #b07a12;
+  background: radial-gradient(#fff, #e2b45a);
+  cursor: pointer;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.1s;
+}
+
+.sceneActionBtn:active {
+  transform: scale(0.9) translateY(5px);
+}
+
+.sceneActionBtn img {
+  width: 60%;
+  opacity: 0.8;
+  filter: sepia(1) saturate(5);
+}
+
+/* Success Panel Styles */
+.successOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20000;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.successPanel {
+  width: min(90%, 800px);
+  background: #fff;
+  position: relative;
+  padding: clamp(40px, 8vh, 80px) clamp(20px, 5vw, 40px);
+  box-shadow: 0 40px 100px rgba(0, 0, 0, 0.6);
+  text-align: center;
+  overflow: hidden;
+}
+
+.successGoldFrame {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, #fff4c9, #e5b554 40%, #b07a12 60%, #fff4c9);
+  z-index: -1;
+}
+
+.successWhiteInner {
+  position: absolute;
+  inset: clamp(5px, 1.2vw, 10px);
+  background: #fff;
+  z-index: -1;
+}
+
+.successInnerBorder {
+  position: absolute;
+  inset: clamp(15px, 3.5vw, 30px);
+  border: clamp(1px, 0.3vw, 3px) solid #b07a12;
+  pointer-events: none;
+}
+
+.successTitle {
+  font-size: clamp(18px, 3vw, 24px);
+  font-weight: 800;
+  color: #b07a12;
+  margin-bottom: clamp(15px, 3vh, 30px);
+  line-height: 1.4;
+  letter-spacing: 1px;
+}
+
+.successBtn {
+  min-width: clamp(120px, 15vw, 180px);
+  padding: clamp(12px, 2vh, 18px) clamp(30px, 5vw, 60px);
+  border-radius: 999px;
+  border: 2px solid rgba(160, 110, 20, 0.6);
+  background: linear-gradient(#fff2c8, #e2b45a, #c68a1c);
+  color: #7a4b0d;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 0 rgba(120, 70, 10, 0.45), 0 15px 35px rgba(0, 0, 0, 0.25);
+  font-size: clamp(14px, 1.8vw, 18px);
+  letter-spacing: 1px;
 }

@@ -40,6 +40,9 @@
 
 <body>
   <div class="app">
+    <!-- Main Menu Intro Audio -->
+    <audio id="homeIntroAudio" src="assets/media/audio/Intro.mp3" preload="auto"></audio>
+
     <!-- Global Options Button -->
     <button class="globalOptionsBtn pillBtn hidden" id="globalOptionsBtn" data-action="options"
       aria-label="Open Options">
@@ -48,7 +51,7 @@
 
 
     <!-- ================= HOME SCREEN ================= -->
-    <div class="homeScreen" id="homeScreen">
+    <div class="homeScreen hidden" id="homeScreen">
       <div class="homeContainer">
 
         <!-- Left Illustration -->
@@ -82,21 +85,97 @@
             <!-- Login View -->
             <div id="homeLoginView" class="hidden">
               <div class="loginHeaderArea">
-                <button class="pillBtn pillGold signUpBtn" data-action="signUp">Sign Up</button>
+                <div class="pillBtn pillGold signUpBtn">Sign In</div>
               </div>
               <div class="loginForm">
+                <div id="loginStatus" class="authStatusMessage hidden"></div>
                 <div class="inputWrapper">
                   <div class="inputIcon">✉</div>
-                  <input type="text" class="homeInput" placeholder="Username" />
+                  <input type="email" id="loginEmail" class="homeInput" placeholder="Email Address" />
                 </div>
                 <div class="inputWrapper">
-                  <input type="password" class="homeInput" placeholder="Password" />
+                  <input type="password" id="loginPassword" class="homeInput" placeholder="Password" />
                 </div>
                 <div class="forgotArea">
-                  <span class="forgotLink">Forgot Password?</span>
+                  <span class="forgotLink" data-action="goToForgot">Forgot Password?</span>
                 </div>
                 <div class="loginActionArea">
                   <button class="pillBtn pillBlue loginSubmitBtn" data-action="loginSubmit">Login</button>
+                  <div class="toggleAccountArea">
+                    Don't have an account? <span class="toggleAccountLink" data-action="goToSignUp">Sign Up</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Sign Up View -->
+            <div id="homeSignUpView" class="hidden">
+              <div class="loginHeaderArea">
+                <div class="pillBtn pillGold signUpBtn">Sign Up</div>
+              </div>
+              <div class="loginForm">
+                <div id="signUpStatus" class="authStatusMessage hidden"></div>
+                <div class="inputWrapper">
+                  <input type="text" id="signUpName" class="homeInput" placeholder="Full Name" />
+                </div>
+                <div class="inputWrapper">
+                  <input type="email" id="signUpEmail" class="homeInput" placeholder="Email Address" />
+                </div>
+                <div class="inputWrapper">
+                  <input type="password" id="signUpPassword" class="homeInput" placeholder="Password" />
+                </div>
+                <div class="loginActionArea">
+                  <button class="pillBtn pillBlue loginSubmitBtn" data-action="signUpSubmit">Create Account</button>
+                  <div class="toggleAccountArea">
+                    Already have an account? <span class="toggleAccountLink" data-action="goToLogin">Sign In</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Forget Password View -->
+            <div id="homeForgetPasswordView" class="hidden">
+              <div class="loginHeaderArea">
+                <div class="pillBtn pillGold signUpBtn">Forgot Password</div>
+              </div>
+              <div class="loginForm">
+                <div id="forgotStatus" class="authStatusMessage hidden"></div>
+                <div class="homeDialogText" style="margin-bottom: 20px; text-align: center;">
+                  <p>Enter your email to reset password</p>
+                </div>
+                <div class="inputWrapper">
+                  <input type="email" id="forgotEmail" class="homeInput" placeholder="Email Address" />
+                </div>
+                <div class="loginActionArea">
+                  <button class="pillBtn pillBlue loginSubmitBtn" data-action="forgotSubmit">Reset Password</button>
+                  <div class="toggleAccountArea">
+                    Remembered? <span class="toggleAccountLink" data-action="goToLogin">Back to Login</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Reset Password View -->
+            <div id="homeResetPasswordView" class="hidden">
+              <div class="loginHeaderArea">
+                <div class="pillBtn pillGold signUpBtn">Reset Password</div>
+              </div>
+              <div class="loginForm">
+                <div id="resetStatus" class="authStatusMessage hidden"></div>
+                <div class="homeDialogText" style="margin-bottom: 20px; text-align: center;">
+                  <p>Enter your reset code and new password</p>
+                </div>
+                <div class="inputWrapper">
+                  <input type="text" id="resetCode" class="homeInput" placeholder="Reset Code" />
+                </div>
+                <div class="inputWrapper">
+                  <input type="password" id="resetNewPassword" class="homeInput" placeholder="New Password" />
+                </div>
+                <div class="loginActionArea">
+                  <button class="pillBtn pillBlue loginSubmitBtn" data-action="resetSubmit">Confirm Reset</button>
+                  <div class="toggleAccountArea">
+                    Back to <span class="toggleAccountLink" data-action="goToLogin">Login</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -107,7 +186,8 @@
         <div class="homeSidebar">
           <div class="sidebarGroup">
             <button class="homeSidebarBtn pillGold" data-action="menu">Menu</button>
-            <button class="homeSidebarBtn pillWhite" data-action="login">Login</button>
+            <button class="homeSidebarBtn pillWhite" id="sidebarLoginBtn" data-action="login">Login</button>
+            <button class="homeSidebarBtn pillWhite hidden" id="sidebarLogoutBtn" data-action="logout">Sign Out</button>
             <button class="homeSidebarBtn pillContact" data-action="contact">
               <span class="contactIcon">✉</span> CONTACT US
             </button>

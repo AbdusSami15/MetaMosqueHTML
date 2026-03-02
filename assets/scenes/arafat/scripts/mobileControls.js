@@ -4,7 +4,7 @@ export class MobileControls {
   constructor(options = {}) {
     this.domElement = options.domElement || document.body;
     this.speed = options.speed || 0.15;
-    this.rotationSpeed = options.rotationSpeed || 0.005;
+    this.rotationSpeed = options.rotationSpeed || 0.004;
 
     // Output vectors
     this.moveVector = new THREE.Vector3(0, 0, 0); // x=left/right, z=fwd/back

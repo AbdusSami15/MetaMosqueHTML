@@ -433,7 +433,22 @@ export async function enter(c) {
         showHajjChoicePanel();
     }
 
+    window.addEventListener("resize", onResize);
+
     tick();
+}
+
+function onResize() {
+    if (window.sceneRouter && window.sceneRouter.handleSceneResize) {
+        window.sceneRouter.handleSceneResize(camera, renderer, ctx.canvas);
+    } else {
+        if (!ctx?.canvas || !camera || !renderer) return;
+        const w = ctx.canvas.clientWidth;
+        const h = ctx.canvas.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
 }
 
 function tick() {
@@ -500,6 +515,7 @@ function tick() {
 }
 
 export function exit() {
+    window.removeEventListener("resize", onResize);
     if (renderer) renderer.dispose();
     if (mobileControls) {
         mobileControls.disable();

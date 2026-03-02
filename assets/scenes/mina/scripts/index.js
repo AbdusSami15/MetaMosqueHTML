@@ -168,12 +168,16 @@ function onMouseMove(e) {
 }
 
 function onResize() {
-  if (!ctx?.canvas || !camera || !renderer) return;
-  const w = ctx.canvas.clientWidth;
-  const h = ctx.canvas.clientHeight;
-  camera.aspect = w / h;
-  camera.updateProjectionMatrix();
-  renderer.setSize(w, h);
+  if (window.sceneRouter && window.sceneRouter.handleSceneResize) {
+    window.sceneRouter.handleSceneResize(camera, renderer, ctx.canvas);
+  } else {
+    if (!ctx?.canvas || !camera || !renderer) return;
+    const w = ctx.canvas.clientWidth;
+    const h = ctx.canvas.clientHeight;
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+    renderer.setSize(w, h);
+  }
 }
 
 function tick(t) {

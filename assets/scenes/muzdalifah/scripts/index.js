@@ -246,12 +246,16 @@ function onMouseMove(e) {
 }
 
 function onResize() {
-    if (!ctx?.canvas || !camera || !renderer) return;
-    const w = ctx.canvas.clientWidth;
-    const h = ctx.canvas.clientHeight;
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
-    renderer.setSize(w, h);
+    if (window.sceneRouter && window.sceneRouter.handleSceneResize) {
+        window.sceneRouter.handleSceneResize(camera, renderer, ctx.canvas);
+    } else {
+        if (!ctx?.canvas || !camera || !renderer) return;
+        const w = ctx.canvas.clientWidth;
+        const h = ctx.canvas.clientHeight;
+        camera.aspect = w / h;
+        camera.updateProjectionMatrix();
+        renderer.setSize(w, h);
+    }
 }
 
 function tick(t) {
@@ -337,56 +341,19 @@ function showPickingUI() {
     if (pickingUI) return;
 
     pickingUI = document.createElement("div");
-    pickingUI.style.cssText = `
-        position: absolute; inset: 0; pointer-events: none;
-        display: flex; flex-direction: column; align-items: center; justify-content: space-between;
-        padding: 60px 20px; z-index: 1500; font-family: 'Outfit', sans-serif;
-    `;
+    pickingUI.className = "sceneInteractiveUI";
 
     // Counter UI
     const topLabel = document.createElement("div");
     topLabel.id = "pickingCounter";
-    topLabel.style.cssText = `
-        background: rgba(255, 255, 255, 0.1);
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
-        color: #fff;
-        padding: 12px 36px;
-        border-radius: 999px;
-        font-size: 22px;
-        font-weight: 700;
-        border: 2px solid rgba(232, 197, 90, 0.6);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-        letter-spacing: 1.5px;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.5);
-    `;
+    topLabel.className = "sceneCounterLabel";
     topLabel.textContent = "COLLECT STONES: 0 / 7";
     pickingUI.appendChild(topLabel);
 
     // Pick Button UI
     const pickBtn = document.createElement("button");
-    pickBtn.style.cssText = `
-        pointer-events: auto;
-        min-width: 220px;
-        padding: 18px 48px;
-        border-radius: 16px;
-        border: none;
-        background: linear-gradient(180deg, #fff4d0 0%, #e8c55a 35%, #c99020 70%, #a67210 100%);
-        color: #6b4a0a;
-        font-weight: 900;
-        font-size: 20px;
-        letter-spacing: 2px;
-        cursor: pointer;
-        box-shadow: 
-            0 4px 0 #8a6912,
-            0 8px 30px rgba(0, 0, 0, 0.5),
-            inset 0 1px 0 rgba(255,255,255,0.4);
-        transition: transform 0.1s;
-    `;
-    pickBtn.textContent = "PICK STONE";
-
-    pickBtn.onmousedown = () => pickBtn.style.transform = "translateY(2px)";
-    pickBtn.onmouseup = () => pickBtn.style.transform = "translateY(0)";
+    pickBtn.className = "sceneActionBtn";
+    pickBtn.innerHTML = `<img src="assets/ui/al_haram.png">`;
 
     pickBtn.onclick = () => {
         if (isPicking || picksCount >= 7) return;
@@ -414,60 +381,31 @@ function showPickingUI() {
 
 function showSuccessPanel() {
     const successOverlay = document.createElement("div");
-    successOverlay.style.cssText = `
-        position: fixed; inset: 0; background: rgba(0,0,0,0.6);
-        display: flex; align-items: center; justify-content: center;
-        z-index: 20000; backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-    `;
+    successOverlay.className = "successOverlay";
 
     const panel = document.createElement("div");
-    panel.style.cssText = `
-        width: 90%; max-width: 800px; background: #fff;
-        border-radius: 0; position: relative; padding: 80px 40px;
-        box-shadow: 0 40px 100px rgba(0,0,0,0.6); text-align: center;
-        border: none;
-    `;
+    panel.className = "successPanel";
 
-    // Inner gold border + Before/After simulation for Dua style
+    // Inner gold border
     const goldFrame = document.createElement("div");
-    goldFrame.style.cssText = `
-        position: absolute; inset: 0;
-        background: linear-gradient(180deg, #fff4c9, #e5b554 40%, #b07a12 60%, #fff4c9);
-        z-index: -1;
-    `;
+    goldFrame.className = "successGoldFrame";
     panel.appendChild(goldFrame);
 
     const whiteInner = document.createElement("div");
-    whiteInner.style.cssText = `
-        position: absolute; inset: 10px; background: #fff; z-index: -1;
-    `;
+    whiteInner.className = "successWhiteInner";
     panel.appendChild(whiteInner);
 
     const innerBorder = document.createElement("div");
-    innerBorder.style.cssText = `
-        position: absolute; inset: 30px; border: 3px solid #b07a12;
-        pointer-events: none;
-    `;
+    innerBorder.className = "successInnerBorder";
     panel.appendChild(innerBorder);
 
     const title = document.createElement("div");
-    title.style.cssText = `
-        font-size: 24px; font-weight: 800; color: #b07a12;
-        margin-bottom: 20px; line-height: 1.4; letter-spacing: 1px;
-    `;
+    title.className = "successTitle";
     title.textContent = "NOW WE WILL MOVE TO THE NEXT STEP";
     panel.appendChild(title);
 
     const okBtn = document.createElement("button");
-    okBtn.style.cssText = `
-        min-width: 160px; padding: 16px 50px; border-radius: 999px;
-        border: 2px solid rgba(160, 110, 20, 0.6);
-        background: linear-gradient(#fff2c8, #e2b45a, #c68a1c);
-        color: #7a4b0d; font-weight: 800; cursor: pointer;
-        box-shadow: 0 4px 0 rgba(120,70,10,0.45), 0 15px 35px rgba(0,0,0,0.25);
-        font-size: 18px; letter-spacing: 1px;
-    `;
+    okBtn.className = "successBtn";
     okBtn.textContent = "OK";
     okBtn.onclick = () => {
         if (successOverlay.parentNode) successOverlay.parentNode.removeChild(successOverlay);
@@ -479,7 +417,7 @@ function showSuccessPanel() {
     panel.appendChild(okBtn);
 
     successOverlay.appendChild(panel);
-    document.body.appendChild(successOverlay); // Use document.body + massive z-index
+    document.body.appendChild(successOverlay);
 }
 
 function onNextSceneClick() {
