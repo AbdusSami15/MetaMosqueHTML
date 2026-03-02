@@ -22,7 +22,6 @@ const homePilgrimageView = document.getElementById("homePilgrimageView");
 const homeLoginView = document.getElementById("homeLoginView");
 const homeSignUpView = document.getElementById("homeSignUpView");
 const homeForgetPasswordView = document.getElementById("homeForgetPasswordView");
-const homeResetPasswordView = document.getElementById("homeResetPasswordView");
 const homeIntroAudio = document.getElementById("homeIntroAudio");
 const API_BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "https://app.metamosque.com";
 window.IS_LOGGED_IN = false;
@@ -98,14 +97,6 @@ function showHomeScreen(view = "pilgrimage") {
     hide(homeLoginView);
     hide(homeSignUpView);
     show(homeForgetPasswordView);
-    hide(homeResetPasswordView);
-    stopHomeIntro();
-  } else if (view === "reset") {
-    hide(homePilgrimageView);
-    hide(homeLoginView);
-    hide(homeSignUpView);
-    hide(homeForgetPasswordView);
-    show(homeResetPasswordView);
     stopHomeIntro();
   } else {
     show(homePilgrimageView);
@@ -321,7 +312,6 @@ document.addEventListener("click", (e) => {
     if (action === "loginSubmit") { handleAuthSubmit("login"); return; }
     if (action === "signUpSubmit") { handleAuthSubmit("signup"); return; }
     if (action === "forgotSubmit") { handleAuthSubmit("forgot"); return; }
-    if (action === "resetSubmit") { handleAuthSubmit("reset"); return; }
 
     // sceneNextScene: default handler for scenes like umrah_haram → go to safa_marwah
     // (safa_marwah uses e.stopPropagation() on its own SCENE button, so it won't hit this)
@@ -473,13 +463,6 @@ async function handleAuthSubmit(type) {
     endpoint = "/api/auth/forgot-password";
     payload = { email };
     submitBtn = document.querySelector('[data-action="forgotSubmit"]');
-  } else if (type === "reset") {
-    const code = document.getElementById("resetCode")?.value;
-    const password = document.getElementById("resetNewPassword")?.value;
-    if (!code || !password) { showAuthMessage("reset", "Please enter reset code and new password"); return; }
-    endpoint = "/api/auth/reset-password";
-    payload = { code, password };
-    submitBtn = document.querySelector('[data-action="resetSubmit"]');
   }
 
   if (submitBtn) submitBtn.disabled = true;
@@ -498,12 +481,8 @@ async function handleAuthSubmit(type) {
       window.IS_LOGGED_IN = true;
       updateAuthUI();
       setTimeout(() => showHomeScreen("pilgrimage"), 1500);
-    } else if (type === "signup") {
-      setTimeout(() => showHomeScreen("login"), 2000);
-    } else if (type === "forgot") {
-      setTimeout(() => showHomeScreen("reset"), 2000);
-    } else if (type === "reset") {
-      setTimeout(() => showHomeScreen("login"), 2000);
+    } else if (type === "signup" || type === "forgot") {
+      setTimeout(() => showHomeScreen("login"), 3000);
     }
   }
 }

@@ -136,7 +136,7 @@
             <!-- Forget Password View -->
             <div id="homeForgetPasswordView" class="hidden">
               <div class="loginHeaderArea">
-                <div class="pillBtn pillGold signUpBtn">Forgot Password</div>
+                <div class="pillBtn pillGold forgotHeaderBtn">Forgot Password</div>
               </div>
               <div class="loginForm">
                 <div id="forgotStatus" class="authStatusMessage hidden"></div>
@@ -155,220 +155,200 @@
               </div>
             </div>
 
-            <!-- Reset Password View -->
-            <div id="homeResetPasswordView" class="hidden">
-              <div class="loginHeaderArea">
-                <div class="pillBtn pillGold signUpBtn">Reset Password</div>
-              </div>
-              <div class="loginForm">
-                <div id="resetStatus" class="authStatusMessage hidden"></div>
-                <div class="homeDialogText" style="margin-bottom: 20px; text-align: center;">
-                  <p>Enter your reset code and new password</p>
-                </div>
-                <div class="inputWrapper">
-                  <input type="text" id="resetCode" class="homeInput" placeholder="Reset Code" />
-                </div>
-                <div class="inputWrapper">
-                  <input type="password" id="resetNewPassword" class="homeInput" placeholder="New Password" />
-                </div>
-                <div class="loginActionArea">
-                  <button class="pillBtn pillBlue loginSubmitBtn" data-action="resetSubmit">Confirm Reset</button>
-                  <div class="toggleAccountArea">
-                    Back to <span class="toggleAccountLink" data-action="goToLogin">Login</span>
-                  </div>
-                </div>
-              </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Sidebar -->
+      <div class="homeSidebar">
+        <div class="sidebarGroup">
+          <button class="homeSidebarBtn pillGold" data-action="menu">Menu</button>
+          <button class="homeSidebarBtn pillWhite" id="sidebarLoginBtn" data-action="login">Login</button>
+          <button class="homeSidebarBtn pillWhite hidden" id="sidebarLogoutBtn" data-action="logout">Sign Out</button>
+          <button class="homeSidebarBtn pillContact" data-action="contact">
+            <div class="contactIconWrapper">
+              <span class="contactIcon">✉</span>
             </div>
-          </div>
-        </div>
-
-        <!-- Right Sidebar -->
-        <div class="homeSidebar">
-          <div class="sidebarGroup">
-            <button class="homeSidebarBtn pillGold" data-action="menu">Menu</button>
-            <button class="homeSidebarBtn pillWhite" id="sidebarLoginBtn" data-action="login">Login</button>
-            <button class="homeSidebarBtn pillWhite hidden" id="sidebarLogoutBtn" data-action="logout">Sign Out</button>
-            <button class="homeSidebarBtn pillContact" data-action="contact">
-              <span class="contactIcon">✉</span> CONTACT US
-            </button>
-          </div>
-        </div>
-
-        <!-- Footer -->
-        <div class="homeFooter">
-          <div class="footerUrl">www.MetaMosque.com</div>
-          <div class="footerTrademark">®</div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= OPTIONS SCREEN ================= -->
-    <div class="menuFrame hidden" id="optionsScreen">
-      <div class="menuInner optionsInner">
-        <div class="optionsTopRow">
-          <button class="backBtn" type="button" data-action="backToMenu" aria-label="Back">
-            <span class="backIcon">↩</span>
-          </button>
-          <div class="optionsTitlePill">OPTIONS</div>
-          <div class="optionsTopSpacer"></div>
-        </div>
-
-        <div class="optionsBody">
-          <div class="optionsLeft">
-            <button class="optionPill" type="button" data-action="contact">CONTACT US</button>
-            <button class="optionPill" type="button" data-action="privacy">PRIVACY POLICY</button>
-            <button class="optionPill optionDisabled" type="button" disabled>LOGIN</button>
-            <button class="optionPill optionDisabled" type="button" disabled>DELETE ACCOUNT</button>
-          </div>
-
-          <div class="optionsCenter">
-            <div class="optionsLogoWrap" id="optionsLogoWrap">
-              <img id="optionsLogoImg" class="optionsLogoImg" alt="Logo" draggable="false" />
-              <div class="optionsLogoPlaceholder hidden" id="optionsLogoPlaceholder"></div>
-            </div>
-          </div>
-
-          <div class="optionsRight">
-            <div class="followUsPill">FOLLOW US</div>
-            <button class="socialBtn" type="button" data-action="facebook" aria-label="Facebook"><img class="socialImg"
-                src="./assets/ui/fb.png" alt="" /></button>
-            <button class="socialBtn" type="button" data-action="instagram" aria-label="Instagram"><img
-                class="socialImg" src="./assets/ui/ig.png" alt="" /></button>
-            <button class="socialBtn" type="button" data-action="youtube" aria-label="YouTube"><img class="socialImg"
-                src="./assets/ui/yt.png" alt="" /></button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= EXIT OVERLAY ================= -->
-    <div class="exitOverlay hidden" id="exitOverlay" aria-hidden="true">
-      <div class="exitPanel" role="dialog" aria-modal="true" aria-labelledby="exitTitle">
-        <div class="exitText" id="exitTitle">ARE YOU SURE YOU WANT TO EXIT?</div>
-        <div class="exitButtons">
-          <button class="goldBtn yes" id="exitYes" type="button">YES</button>
-          <button class="goldBtn no" id="exitNo" type="button">NO</button>
-        </div>
-        <p class="exitHint hidden" id="exitHint">Please close the tab.</p>
-      </div>
-    </div>
-
-    <!-- ================= METAIMAM (HAJJ / UMRAH) OVERLAY ================= -->
-    <div class="pilgrimageOverlay hidden" id="pilgrimageOverlay" aria-hidden="true">
-      <div class="pilgrimagePanel" role="dialog" aria-modal="true" aria-labelledby="pilgrimageTitle">
-        <div class="pilgrimageFrame">
-          <div class="pilgrimageTitle" id="pilgrimageTitle">
-            WHICH PILGRIMAGE DO YOU LIKE TO<br />PERFORM?
-          </div>
-          <div class="pilgrimageButtons">
-            <button class="pilgrimagePill" type="button" data-action="chooseHajj">HAJJ</button>
-            <button class="pilgrimagePill" type="button" data-action="chooseUmrah">UMRAH</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= DISCLAIMER OVERLAY ================= -->
-    <div class="disclaimerOverlay hidden" id="disclaimerOverlay" aria-hidden="true">
-      <div class="disclaimerPanel" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
-        <div class="disclaimerFrame">
-          <div class="disclaimerText" id="disclaimerTitle">
-            THIS VIRTUAL GAME EXPERIENCE IS FOR<br />
-            EDUCATIONAL PURPOSES ONLY AND<br />
-            SHOULD NOT BE SEEN AS A SUBSTITUTE<br />
-            FOR RELIGIOUS PRACTICES LIKE HAJJ,<br />
-            UMRAH, OR PRAYER.
-          </div>
-
-          <div class="disclaimerBtnRow">
-            <button class="disclaimerOk" id="disclaimerOk" type="button" data-action="disclaimerOk">OK</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ================= LOADING OVERLAY ================= -->
-    <div class="loadingOverlay hidden" id="loadingOverlay" aria-hidden="true">
-      <div class="loadingPanel">
-        <div class="loadingText" id="loadingText">Loading...</div>
-      </div>
-    </div>
-
-    <!-- ================= NEW SCENE (First-Person + Triggers) ================= -->
-    <div class="sceneRoot hidden" id="sceneRoot">
-      <canvas id="sceneCanvas"></canvas>
-      <div class="sceneHint" id="sceneHint">Click to look around · WASD to move</div>
-
-      <!-- ✅ NEW: Dua panel for FIRST NEXT click (Haram only) -->
-      <aside class="duaSidePanel hidden" id="duaSidePanel" aria-hidden="true">
-        <div class="duaSideFrame">
-          <div class="duaSideTitle" id="duaSideTitle">—</div>
-          <div class="duaSideArabic" id="duaSideArabic" dir="rtl" lang="ar"></div>
-          <div class="duaSideLatin" id="duaSideLatin"></div>
-
-        </div>
-        <audio id="duaSideAudio" preload="metadata"></audio>
-      </aside>
-
-      <div class="sceneVideoOverlay hidden" id="sceneVideoOverlay">
-        <div class="sceneVideoFrame">
-          <div class="sceneVideoTitle" id="sceneVideoTitle">UMRAH: MAKKAH</div>
-          <div class="sceneVideoInner">
-            <video id="sceneVideo" playsinline preload="metadata"></video>
-          </div>
-        </div>
-
-        <div class="sceneVideoControls">
-          <button class="hudBtn" type="button" id="sceneVideoNext" aria-label="Next point">NEXT</button>
-          <button class="hudBtn" type="button" id="sceneVideoRestart" aria-label="Restart">RESTART</button>
-          <button class="hudBtn" type="button" id="sceneVideoPause" aria-label="Pause">PAUSE</button>
-
-          <button class="hudBtn hudBtnDisabled" type="button" id="sceneNextSceneBtn" data-action="sceneNextScene"
-            disabled aria-disabled="true" aria-label="Next scene">
-            SCENE
+            <div class="contactTextWrapper">CONTACT US</div>
           </button>
         </div>
-
-        <audio id="sceneAudio" preload="metadata"></audio>
       </div>
 
+      <!-- Footer -->
+      <div class="homeFooter">
+        <div class="footerUrl">www.MetaMosque.com</div>
+        <div class="footerTrademark">®</div>
+      </div>
+    </div>
+  </div>
 
-      <!-- ✅ NEW: Mobile Controls -->
-      <div class="mobile-controls-container hidden-mobile" id="mobileControls">
-        <div class="joystick-base" id="joystickBase">
-          <div class="joystick-stick" id="joystickStick"></div>
+  <!-- ================= OPTIONS SCREEN ================= -->
+  <div class="menuFrame hidden" id="optionsScreen">
+    <div class="menuInner optionsInner">
+      <div class="optionsTopRow">
+        <button class="backBtn" type="button" data-action="backToMenu" aria-label="Back">
+          <span class="backIcon">↩</span>
+        </button>
+        <div class="optionsTitlePill">OPTIONS</div>
+        <div class="optionsTopSpacer"></div>
+      </div>
+
+      <div class="optionsBody">
+        <div class="optionsLeft">
+          <button class="optionPill" type="button" data-action="contact">CONTACT US</button>
+          <button class="optionPill" type="button" data-action="privacy">PRIVACY POLICY</button>
+          <button class="optionPill optionDisabled" type="button" disabled>LOGIN</button>
+          <button class="optionPill optionDisabled" type="button" disabled>DELETE ACCOUNT</button>
         </div>
-        <div class="look-zone" id="lookZone"></div>
+
+        <div class="optionsCenter">
+          <div class="optionsLogoWrap" id="optionsLogoWrap">
+            <img id="optionsLogoImg" class="optionsLogoImg" alt="Logo" draggable="false" />
+            <div class="optionsLogoPlaceholder hidden" id="optionsLogoPlaceholder"></div>
+          </div>
+        </div>
+
+        <div class="optionsRight">
+          <div class="followUsPill">FOLLOW US</div>
+          <button class="socialBtn" type="button" data-action="facebook" aria-label="Facebook"><img class="socialImg"
+              src="./assets/ui/fb.png" alt="" /></button>
+          <button class="socialBtn" type="button" data-action="instagram" aria-label="Instagram"><img class="socialImg"
+              src="./assets/ui/ig.png" alt="" /></button>
+          <button class="socialBtn" type="button" data-action="youtube" aria-label="YouTube"><img class="socialImg"
+              src="./assets/ui/yt.png" alt="" /></button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= EXIT OVERLAY ================= -->
+  <div class="exitOverlay hidden" id="exitOverlay" aria-hidden="true">
+    <div class="exitPanel" role="dialog" aria-modal="true" aria-labelledby="exitTitle">
+      <div class="exitText" id="exitTitle">ARE YOU SURE YOU WANT TO EXIT?</div>
+      <div class="exitButtons">
+        <button class="goldBtn yes" id="exitYes" type="button">YES</button>
+        <button class="goldBtn no" id="exitNo" type="button">NO</button>
+      </div>
+      <p class="exitHint hidden" id="exitHint">Please close the tab.</p>
+    </div>
+  </div>
+
+  <!-- ================= METAIMAM (HAJJ / UMRAH) OVERLAY ================= -->
+  <div class="pilgrimageOverlay hidden" id="pilgrimageOverlay" aria-hidden="true">
+    <div class="pilgrimagePanel" role="dialog" aria-modal="true" aria-labelledby="pilgrimageTitle">
+      <div class="pilgrimageFrame">
+        <div class="pilgrimageTitle" id="pilgrimageTitle">
+          WHICH PILGRIMAGE DO YOU LIKE TO<br />PERFORM?
+        </div>
+        <div class="pilgrimageButtons">
+          <button class="pilgrimagePill" type="button" data-action="chooseHajj">HAJJ</button>
+          <button class="pilgrimagePill" type="button" data-action="chooseUmrah">UMRAH</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= DISCLAIMER OVERLAY ================= -->
+  <div class="disclaimerOverlay hidden" id="disclaimerOverlay" aria-hidden="true">
+    <div class="disclaimerPanel" role="dialog" aria-modal="true" aria-labelledby="disclaimerTitle">
+      <div class="disclaimerFrame">
+        <div class="disclaimerText" id="disclaimerTitle">
+          THIS VIRTUAL GAME EXPERIENCE IS FOR<br />
+          EDUCATIONAL PURPOSES ONLY AND<br />
+          SHOULD NOT BE SEEN AS A SUBSTITUTE<br />
+          FOR RELIGIOUS PRACTICES LIKE HAJJ,<br />
+          UMRAH, OR PRAYER.
+        </div>
+
+        <div class="disclaimerBtnRow">
+          <button class="disclaimerOk" id="disclaimerOk" type="button" data-action="disclaimerOk">OK</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= LOADING OVERLAY ================= -->
+  <div class="loadingOverlay hidden" id="loadingOverlay" aria-hidden="true">
+    <div class="loadingPanel">
+      <div class="loadingText" id="loadingText">Loading...</div>
+    </div>
+  </div>
+
+  <!-- ================= NEW SCENE (First-Person + Triggers) ================= -->
+  <div class="sceneRoot hidden" id="sceneRoot">
+    <canvas id="sceneCanvas"></canvas>
+    <div class="sceneHint" id="sceneHint">Click to look around · WASD to move</div>
+
+    <!-- ✅ NEW: Dua panel for FIRST NEXT click (Haram only) -->
+    <aside class="duaSidePanel hidden" id="duaSidePanel" aria-hidden="true">
+      <div class="duaSideFrame">
+        <div class="duaSideTitle" id="duaSideTitle">—</div>
+        <div class="duaSideArabic" id="duaSideArabic" dir="rtl" lang="ar"></div>
+        <div class="duaSideLatin" id="duaSideLatin"></div>
+
+      </div>
+      <audio id="duaSideAudio" preload="metadata"></audio>
+    </aside>
+
+    <div class="sceneVideoOverlay hidden" id="sceneVideoOverlay">
+      <div class="sceneVideoFrame">
+        <div class="sceneVideoTitle" id="sceneVideoTitle">UMRAH: MAKKAH</div>
+        <div class="sceneVideoInner">
+          <video id="sceneVideo" playsinline preload="metadata"></video>
+        </div>
       </div>
 
+      <div class="sceneVideoControls">
+        <button class="hudBtn" type="button" id="sceneVideoNext" aria-label="Next point">NEXT</button>
+        <button class="hudBtn" type="button" id="sceneVideoRestart" aria-label="Restart">RESTART</button>
+        <button class="hudBtn" type="button" id="sceneVideoPause" aria-label="Pause">PAUSE</button>
 
+        <button class="hudBtn hudBtnDisabled" type="button" id="sceneNextSceneBtn" data-action="sceneNextScene" disabled
+          aria-disabled="true" aria-label="Next scene">
+          SCENE
+        </button>
+      </div>
+
+      <audio id="sceneAudio" preload="metadata"></audio>
     </div>
 
-    <!-- ================= TRAINING SCENE ================= -->
-    <div class="trainingRoot hidden" id="trainingRoot">
-      <div class="trainingBg" id="trainingBg" aria-hidden="true"></div>
-      <div class="trainingViewport">
-        <div class="trainingHUD">
 
-          <div class="trainingVideoFrame" id="trainingVideoFrame">
-            <div class="trainingVideoInner">
-              <video id="trainingVideo" playsinline preload="metadata"></video>
-              <audio id="trainingAudio" preload="metadata"></audio>
-              <div class="tapToPlayOverlay hidden" id="tapToPlayOverlay">
-                <span>Tap to Play</span>
-              </div>
+    <!-- ✅ NEW: Mobile Controls -->
+    <div class="mobile-controls-container hidden-mobile" id="mobileControls">
+      <div class="joystick-base" id="joystickBase">
+        <div class="joystick-stick" id="joystickStick"></div>
+      </div>
+      <div class="look-zone" id="lookZone"></div>
+    </div>
+
+
+  </div>
+
+  <!-- ================= TRAINING SCENE ================= -->
+  <div class="trainingRoot hidden" id="trainingRoot">
+    <div class="trainingBg" id="trainingBg" aria-hidden="true"></div>
+    <div class="trainingViewport">
+      <div class="trainingHUD">
+
+        <div class="trainingVideoFrame" id="trainingVideoFrame">
+          <div class="trainingVideoInner">
+            <video id="trainingVideo" playsinline preload="metadata"></video>
+            <audio id="trainingAudio" preload="metadata"></audio>
+            <div class="tapToPlayOverlay hidden" id="tapToPlayOverlay">
+              <span>Tap to Play</span>
             </div>
           </div>
+        </div>
 
-          <div class="trainingControls">
-            <button class="hudBtn" type="button" data-action="trainNext">NEXT</button>
-            <button class="hudBtn" type="button" data-action="trainRestart">RESTART</button>
-            <button class="hudBtn" type="button" data-action="trainPause">PAUSE</button>
-            <button class="hudBtn" type="button" data-action="trainSkip">SKIP</button>
-          </div>
+        <div class="trainingControls">
+          <button class="hudBtn" type="button" data-action="trainNext">NEXT</button>
+          <button class="hudBtn" type="button" data-action="trainRestart">RESTART</button>
+          <button class="hudBtn" type="button" data-action="trainPause">PAUSE</button>
+          <button class="hudBtn" type="button" data-action="trainSkip">SKIP</button>
         </div>
       </div>
     </div>
+  </div>
 
   </div>
 

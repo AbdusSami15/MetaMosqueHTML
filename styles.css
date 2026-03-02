@@ -13,6 +13,18 @@
 
   --goldStroke: rgba(160, 110, 20, .6);
   --goldDeep: #b07a12;
+
+  /* Unity Canvas Scaler Logic: 1920x1080 Reference, Match 0.5 */
+  --ref-w: 1920;
+  --ref-h: 1080;
+  --ui-scale: calc((100vw / var(--ref-w) + 100vh / var(--ref-h)) / 2);
+
+  /* Primary Gradients */
+  --gold-gradient: linear-gradient(180deg, #f9e29a 0%, #d4a017 50%, #8c6a1e 100%);
+  --blue-primary: #399bbd;
+
+  /* Footer Space Management */
+  --footer-safe-zone: clamp(40px, 8vh, 70px);
 }
 
 * {
@@ -1802,11 +1814,13 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) calc(env(safe-area-inset-bottom) + var(--footer-safe-zone)) env(safe-area-inset-left);
   border: clamp(8px, 1.5vw, 20px) solid transparent;
   background-image: linear-gradient(#fff, #fff), linear-gradient(180deg, #fff1b8, #e1b14a 40%, #b07a12 60%, #fff1b8);
   background-origin: border-box;
   background-clip: padding-box, border-box;
+  overflow-y: auto;
+  /* Allow scrolling for small heights */
 }
 
 .homeScreen.hidden {
@@ -1816,14 +1830,12 @@ body {
 .homeContainer {
   width: 100%;
   height: 100%;
-  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0 clamp(2%, 4%, 40px);
-  gap: 20px;
+  padding: clamp(10px, 2vh, 40px) clamp(2%, 4%, 40px) clamp(40px, 8vh, 80px);
+  gap: clamp(10px, 2vw, 40px);
   font-family: "Inter", sans-serif;
-  overflow: hidden;
 }
 
 /* Left Area: Character */
@@ -1833,8 +1845,8 @@ body {
   display: flex;
   flex-direction: column;
   justify-content: flex-end;
-  align-items: flex-start;
-  /* Align left as per mockup */
+  align-items: center;
+  /* Centered to align button under feet */
   position: relative;
   transition: all 0.3s ease;
 }
@@ -1852,8 +1864,8 @@ body {
 
 .chatBtn {
   margin-top: 10px;
-  margin-left: max(10px, 2vw);
-  /* Offset from left */
+  margin-left: 0;
+  /* Centered automatically within characterArea */
   min-width: clamp(100px, 10vw, 130px) !important;
   font-size: clamp(12px, 1.2vw, 15px) !important;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
@@ -1891,10 +1903,9 @@ body {
   width: min(95%, 800px);
   margin: 0 auto;
   background: #fff;
-  border: 5px solid #000;
-  /* Matching mockup border thickness */
-  border-radius: 50px;
-  padding: 60px clamp(15px, 4vw, 40px) 40px;
+  border: clamp(3px, 0.8vw, 6px) solid #000;
+  border-radius: clamp(30px, 5vw, 60px);
+  padding: clamp(20px, 4vh, 40px) clamp(15px, 4vw, 40px) clamp(15px, 3vh, 30px);
   text-align: center;
   position: relative;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
@@ -1902,17 +1913,22 @@ body {
   flex-direction: column;
   justify-content: center;
   min-height: min-content;
+
+  /* Holistic Container Strategy */
+  container-type: inline-size;
+  container-name: authBox;
 }
 
 .homeDialogText {
-  font-size: clamp(16px, 2.5vw, 28px);
+  font-size: 4.5cqi;
+  /* Proportional to Box Width */
   line-height: 1.4;
   color: #000;
   font-weight: 700;
 }
 
 .homeDialogText p {
-  margin: 8px 0;
+  margin: 1.5cqi 0;
 }
 
 .homeDialogText .highlight {
@@ -1922,8 +1938,8 @@ body {
 .homeDialogButtons {
   display: flex;
   justify-content: center;
-  gap: clamp(20px, 4vw, 60px);
-  margin-top: clamp(16px, 2.5vw, 32px);
+  gap: 5cqi;
+  margin-top: 4cqi;
 }
 
 /* Sidebar Area */
@@ -1931,28 +1947,35 @@ body {
   flex: 0 0 18%;
   display: flex;
   justify-content: flex-end;
+  padding-right: clamp(10px, 2vw, 40px);
+
+  /* Holistic Container Strategy for Sidebar */
+  container-type: inline-size;
+  container-name: sidebarBox;
 }
 
 .sidebarGroup {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 5cqi;
   align-items: flex-end;
+  width: 100%;
 }
 
 .homeSidebarBtn {
-  min-width: clamp(100px, 12vw, 180px) !important;
+  min-width: 80% !important;
   width: 100% !important;
-  height: clamp(36px, 6vh, 56px) !important;
-  border-radius: 28px !important;
-  font-size: clamp(12px, 1.1vw, 16px) !important;
+  height: 25cqi !important;
+  border-radius: 12cqi !important;
+  font-size: 8cqi !important;
   font-weight: 800 !important;
   white-space: nowrap !important;
 }
 
 /* Specific Pill Styles */
+/* Specific Pill Styles */
 .pillGold {
-  background: linear-gradient(#f9e29a, #d4a017, #8c6a1e) !important;
+  background: var(--gold-gradient) !important;
   color: #5a3d00 !important;
   border: 1px solid rgba(0, 0, 0, 0.2) !important;
   box-shadow: 0 4px 0 rgba(0, 0, 0, 0.1) !important;
@@ -1967,26 +1990,50 @@ body {
 }
 
 .pillContact {
-  background: #000 !important;
-  color: #d4a017 !important;
-  border: 2px solid #d4a017 !important;
+  background: var(--gold-gradient) !important;
+  color: #000 !important;
+  border: 0.6cqi solid #000 !important;
   display: flex !important;
   align-items: center !important;
-  justify-content: space-between !important;
-  padding: 0 15px !important;
-  font-size: 12px !important;
+  justify-content: flex-start !important;
+  padding: 0.8cqi !important;
+  gap: 1.5cqi !important;
+  overflow: hidden !important;
+  min-width: 90% !important;
+  height: clamp(40px, 10cqi, 60px) !important;
+}
+
+.contactIconWrapper {
+  aspect-ratio: 1 / 1;
+  height: 100%;
+  border: 0.6cqi solid #000;
+  border-radius: 50%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: transparent;
+  flex-shrink: 0;
 }
 
 .contactIcon {
-  background: #d4a017;
-  color: #000;
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
+  font-size: 6cqi !important;
+  color: #000 !important;
+  font-weight: 300 !important;
+}
+
+.contactTextWrapper {
+  flex: 1;
+  height: 100%;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border: 0.6cqi solid #000;
+  border-radius: 50px;
+  text-align: center;
+  font-weight: 900 !important;
+  font-size: 4.5cqi !important;
+  padding: 0 2cqi;
+  white-space: nowrap;
 }
 
 /* Login Form Styles */
@@ -1998,8 +2045,8 @@ body {
 .loginHeaderArea {
   position: relative;
   /* Keep inside natural flow */
-  margin-bottom: 30px;
-  /* Space above username field */
+  margin-bottom: 2.5cqi;
+  /* Reduced space above fields */
   width: 100%;
   display: flex;
   justify-content: center;
@@ -2019,12 +2066,25 @@ body {
   /* Ensure centered text */
 }
 
+.forgotHeaderBtn {
+  min-width: clamp(220px, 22vw, 260px) !important;
+  height: clamp(40px, 6vh, 50px) !important;
+  border-radius: 25px !important;
+  font-size: clamp(18px, 2.2vw, 22px) !important;
+  font-weight: 800 !important;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 20px !important;
+}
+
 .loginForm {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 15px;
-  /* Increased gap for better hierarchy */
+  gap: 2cqi;
+  /* Snugger gap for compact feel */
   width: 100%;
 }
 
@@ -2038,23 +2098,29 @@ body {
 }
 
 .inputIcon {
-  width: clamp(40px, 8vw, 55px);
-  height: clamp(40px, 8vw, 55px);
+  width: 8cqi;
+  height: 8cqi;
   background: linear-gradient(135deg, #f3d08a, #d4a017, #8c6a1e);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
-  font-size: clamp(20px, 3vw, 24px);
-  border: 4px solid #fff;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  font-size: 3.5cqi;
+  border: 0.6cqi solid #fff;
+  box-shadow: 0 0.5cqi 1.5cqi rgba(0, 0, 0, 0.15);
   position: absolute;
-  /* Pushed further left to create a clear gap from the input boundary */
-  left: -75px;
+  /* Proportional Offset */
+  left: -10cqi;
   top: 50%;
   transform: translateY(-50%);
   z-index: 10;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.inputWrapper:focus-within .inputIcon {
+  transform: translateY(-50%) scale(1.1);
+  background: linear-gradient(135deg, #399bbd, #2d82a1);
 }
 
 .inputIcon.invisible {
@@ -2066,12 +2132,11 @@ body {
 /* Add padding to the input to avoid icon overlap if narrow */
 .homeInput {
   width: 100%;
-  /* Spans full wrapper width */
-  height: clamp(40px, 6vh, 48px);
-  border: 2px solid #000;
-  border-radius: 24px;
-  padding: 0 15px;
-  font-size: clamp(14px, 1.5vw, 18px);
+  height: 8cqi;
+  border: 0.4cqi solid #000;
+  border-radius: 4cqi;
+  padding: 0 3cqi;
+  font-size: 3cqi;
   text-align: center;
   font-weight: 700;
   color: #000;
@@ -2103,17 +2168,18 @@ body {
   background: #399bbd !important;
   color: #fff !important;
   border: none !important;
-  min-width: clamp(160px, 18vw, 200px) !important;
-  height: clamp(40px, 6vh, 50px) !important;
-  border-radius: 25px !important;
-  font-size: clamp(18px, 2.2vw, 22px) !important;
+  min-width: 30cqi !important;
+  height: 8cqi !important;
+  border-radius: 4cqi !important;
+  font-size: 3.2cqi !important;
   font-weight: 800 !important;
-  box-shadow: 0 4px 15px rgba(57, 155, 189, 0.3) !important;
+  box-shadow: 0 0.8cqi 2cqi rgba(57, 155, 189, 0.3) !important;
+  cursor: pointer;
 }
 
 .toggleAccountArea {
-  margin-top: 20px;
-  font-size: clamp(14px, 2vw, 18px);
+  margin-top: 2cqi;
+  font-size: 2.8cqi;
   color: #666;
   font-weight: 500;
 }
@@ -2125,10 +2191,6 @@ body {
   margin-left: 5px;
   text-decoration: underline;
   transition: opacity 0.2s;
-}
-
-.toggleAccountLink:hover {
-  opacity: 0.8;
 }
 
 .authStatusMessage {
@@ -2157,16 +2219,10 @@ body {
   display: none !important;
 }
 
-@media (max-width: 768px) {
-  .inputIcon {
-    left: -10px;
-  }
-}
-
 /* Footer */
 .homeFooter {
   position: absolute;
-  bottom: 10px;
+  bottom: calc(10px + env(safe-area-inset-bottom));
   left: 0;
   right: 0;
   display: flex;
@@ -2176,12 +2232,18 @@ body {
   font-weight: 700;
   font-size: clamp(14px, 2vw, 22px);
   padding: 0 4%;
+  z-index: 1010;
+  /* Above characters */
+  pointer-events: none;
+  /* Let clicks through center area */
 }
 
 .footerUrl {
   margin: 0 auto;
   color: #d4a017;
   letter-spacing: 1px;
+  pointer-events: auto;
+  /* Re-enable clicks for the link */
 }
 
 .footerTrademark {
