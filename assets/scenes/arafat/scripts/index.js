@@ -2,6 +2,7 @@
 // First-person scene for Arafat — Sequential Media + Standard HUD UI
 
 import * as THREE from "three";
+import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import {
     playTriggerMedia,
@@ -16,6 +17,7 @@ let ctx = null;
 let scene = null;
 let camera = null;
 let renderer = null;
+let controls = null;
 let animId = 0;
 let mobileControls = null;
 let envModel = null;
@@ -23,6 +25,17 @@ let characterModel = null;
 let mixer = null;
 let idleAction = null;
 let lastT = 0;
+
+let velocity = new THREE.Vector3();
+let moveForward = false;
+let moveBack = false;
+let moveLeft = false;
+let moveRight = false;
+
+const _dir = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _up = new THREE.Vector3(0, 1, 0);
+const _tmpV = new THREE.Vector3();
 
 // Sequential Media & Trigger
 let points = [];
@@ -37,7 +50,6 @@ const TRIGGER_DIST = 4.0;
 const keys = Object.create(null);
 let yaw = 0;
 let pitch = 0;
-let dragging = false;
 
 // Settings
 let MOVE_SPEED = 5.0;
@@ -48,12 +60,6 @@ const LOOK_SENS = 0.0022;
 
 const CHARACTER_FOLLOW_CAMERA = true;
 const CHARACTER_OFFSET = new THREE.Vector3(1.0, -0.2, -2.5);
-
-const _dir = new THREE.Vector3();
-const _right = new THREE.Vector3();
-const _move = new THREE.Vector3();
-const _up = new THREE.Vector3(0, 1, 0);
-const _tmpV = new THREE.Vector3();
 
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
@@ -70,47 +76,49 @@ function makeUrl(basePath, p) {
     }
 }
 
-function applyYawPitch() {
-    if (!camera) return;
-    pitch = clamp(pitch, -1.1, 1.1);
-    camera.rotation.order = "YXZ";
-    camera.rotation.y = yaw;
-    camera.rotation.x = pitch;
-}
-
 function applyMobileLook() {
     if (!mobileControls || !mobileControls.enabled) return;
-    // Transverse look logic matching Safa Marwah
-    yaw += mobileControls.lookVector.x;
-    pitch += mobileControls.lookVector.y;
-    applyYawPitch();
+    if (controls) {
+        controls.getObject().rotation.y += mobileControls.lookVector.x;
+        camera.rotation.x += mobileControls.lookVector.y;
+        camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+    }
 }
 
 function step(dt) {
     if (!camera) return;
-    let fwd = (keys["KeyW"] || keys["ArrowUp"] ? 1 : 0) - (keys["KeyS"] || keys["ArrowDown"] ? 1 : 0);
-    let str = (keys["KeyD"] || keys["ArrowRight"] ? 1 : 0) - (keys["KeyA"] || keys["ArrowLeft"] ? 1 : 0);
+    velocity.set(0, 0, 0);
 
+    // Keyboard
+    if (controls && controls.isLocked) {
+        camera.getWorldDirection(_dir);
+        _dir.y = 0; _dir.normalize();
+        _right.crossVectors(_dir, _up).normalize();
+
+        if (moveForward) velocity.add(_dir);
+        if (moveBack) velocity.sub(_dir);
+        if (moveRight) velocity.add(_right);
+        if (moveLeft) velocity.sub(_right);
+    }
+
+    // Mobile
     if (mobileControls && mobileControls.enabled) {
-        fwd += mobileControls.moveVector.z;
-        str += mobileControls.moveVector.x;
+        const mv = mobileControls.moveVector;
+        if (mv.lengthSq() > 0.0001) {
+            camera.getWorldDirection(_dir);
+            _dir.y = 0; _dir.normalize();
+            _right.crossVectors(_dir, _up).normalize();
+
+            velocity.addScaledVector(_dir, mv.z);
+            velocity.addScaledVector(_right, mv.x);
+        }
     }
 
-    if (fwd === 0 && str === 0) {
-        camera.position.y = WALK_Y;
-        return;
+    if (velocity.lengthSq() > 0) {
+        if (velocity.lengthSq() > 1) velocity.normalize();
+        camera.position.addScaledVector(velocity, MOVE_SPEED * dt);
     }
 
-    const speed = MOVE_SPEED * dt;
-    camera.getWorldDirection(_dir);
-    _dir.y = 0; _dir.normalize();
-    _right.crossVectors(_dir, _up).normalize();
-
-    _move.set(0, 0, 0);
-    if (fwd !== 0) _move.addScaledVector(_dir, fwd * speed);
-    if (str !== 0) _move.addScaledVector(_right, str * speed);
-
-    camera.position.add(_move);
     camera.position.y = WALK_Y;
 }
 
@@ -141,6 +149,7 @@ function checkTrigger() {
     if (distSq < TRIGGER_DIST * TRIGGER_DIST) {
         triggered = true;
         if (triggerMesh) triggerMesh.visible = false;
+        if (controls) controls.unlock();
 
         // Start first media point
         if (points.length > 0) {
@@ -153,19 +162,23 @@ function checkTrigger() {
 }
 
 // ─── Event handlers ──────────────────────────────────────────────────────────
-function onKeyDown(e) { keys[e.code] = true; }
-function onKeyUp(e) { keys[e.code] = false; }
-function onMouseDown(e) {
-    if (!ctx?.canvas || e.button !== 0) return;
-    dragging = true;
-    try { ctx.canvas.focus?.(); } catch (_) { }
+function onKeyDown(e) {
+    if (e.code === "KeyW") moveForward = true;
+    if (e.code === "KeyS") moveBack = true;
+    if (e.code === "KeyA") moveLeft = true;
+    if (e.code === "KeyD") moveRight = true;
+
+    if (e.code === "Space") {
+        togglePauseTriggerMedia(ctx);
+        return;
+    }
 }
-function onMouseUp() { dragging = false; }
-function onMouseMove(e) {
-    if (!dragging || !camera) return;
-    yaw -= e.movementX * LOOK_SENS;
-    pitch += e.movementY * LOOK_SENS;
-    applyYawPitch();
+
+function onKeyUp(e) {
+    if (e.code === "KeyW") moveForward = false;
+    if (e.code === "KeyS") moveBack = false;
+    if (e.code === "KeyA") moveLeft = false;
+    if (e.code === "KeyD") moveRight = false;
 }
 
 function onResize() {
@@ -290,14 +303,25 @@ export async function enter(c) {
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     camera = new THREE.PerspectiveCamera(70, w / h, 0.1, 1000);
+    camera.rotation.order = "YXZ";
+    camera.rotation.set(0, 0, 0);
     camera.position.set(camStart[0] ?? 0, WALK_Y, camStart[2] ?? 12);
-    yaw = cfg?.cameraYaw || 0;
-    pitch = cfg?.cameraPitch || 0;
-    applyYawPitch();
 
     renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
     renderer.setSize(w, h);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    controls = new PointerLockControls(camera, document.body);
+    scene.add(controls.getObject());
+
+    canvas.addEventListener("click", () => {
+        if (controls && !controls.isLocked) controls.lock();
+    });
+
+    const yawVal = cfg?.cameraYaw || 0;
+    const pitchVal = cfg?.cameraPitch || 0;
+    controls.getObject().rotation.y = yawVal;
+    camera.rotation.x = pitchVal;
 
     canvas.tabIndex = 0;
     canvas.style.outline = "none";
@@ -378,9 +402,6 @@ export async function enter(c) {
     // Events
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
-    canvas.addEventListener("mousedown", onMouseDown);
-    window.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("resize", onResize);
 
     bindUI();
@@ -399,10 +420,12 @@ export function exit() {
 
     document.removeEventListener("keydown", onKeyDown);
     document.removeEventListener("keyup", onKeyUp);
-    if (ctx?.canvas) ctx.canvas.removeEventListener("mousedown", onMouseDown);
-    window.removeEventListener("mouseup", onMouseUp);
-    window.removeEventListener("mousemove", onMouseMove);
     window.removeEventListener("resize", onResize);
+
+    if (controls) {
+        controls.unlock();
+        controls = null;
+    }
 
     if (mobileControls) {
         mobileControls.disable();

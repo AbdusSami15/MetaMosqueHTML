@@ -5,7 +5,7 @@ function assetUrl(rel) {
 
 
 
-const mainMenu = document.getElementById("mainMenu");
+const mainMenu = document.getElementById("homeScreen");
 const optionsScreen = document.getElementById("optionsScreen");
 const optionsLogoImg = document.getElementById("optionsLogoImg");
 const optionsLogoPlaceholder = document.getElementById("optionsLogoPlaceholder");
@@ -26,7 +26,7 @@ const homeIntroAudio = document.getElementById("homeIntroAudio");
 const API_BASE_URL = (location.hostname === "localhost" || location.hostname === "127.0.0.1") ? "" : "https://app.metamosque.com";
 window.IS_LOGGED_IN = false;
 if (homeIntroAudio) {
-  homeIntroAudio.onerror = () => console.warn("MetaMosque: Intro.mp3 failed to load. Check path: assets/media/audio/Intro.mp3");
+  homeIntroAudio.onerror = () => console.warn("MetaImam: Intro.mp3 failed to load. Check path: assets/media/audio/Intro.mp3");
 }
 
 let exitOpen = false;
@@ -129,7 +129,7 @@ function initOptionsLogo() {
     show(optionsLogoImg);
   };
   optionsLogoImg.onerror = function () {
-    console.warn("MetaMosque: options logo not found at " + path);
+    console.warn("MetaImam: options logo not found at " + path);
     show(optionsLogoPlaceholder);
     hide(optionsLogoImg);
   };
@@ -137,6 +137,7 @@ function initOptionsLogo() {
 }
 
 function openExit() {
+  console.log("MetaImam: openExit triggered");
   if (!exitOverlay) return;
   show(exitOverlay);
   if (exitHint) hide(exitHint);
@@ -153,11 +154,13 @@ function closeExit() {
 }
 
 function confirmExit() {
-  try {
-    window.close();
-  } catch (_) { }
-  if (homeScreen) show(homeScreen);
-  if (exitHint) show(exitHint);
+  closeExit();
+  hide(optionsScreen);
+  if (window.sceneRouter && typeof window.sceneRouter.exitScene === "function") {
+    window.sceneRouter.exitScene();
+  } else {
+    showHomeScreen();
+  }
 }
 
 function openPilgrimage() {
@@ -379,12 +382,17 @@ async function fetchAPI(endpoint, data = null, method = "POST") {
 
     const response = await fetch(url, options);
     if (response.status === 401) {
+      if (endpoint.includes("/api/auth/")) {
+        // Authenticate attempt failed (e.g. wrong password)
+        const errorBody = await response.json().catch(() => ({}));
+        return { error: true, message: errorBody.message || "Incorrect email or password." };
+      }
       handleLogout();
       return { error: true, message: "Session expired. Please login again." };
     }
     return await response.json();
   } catch (err) {
-    console.error("MetaMosque API Error:", err);
+    console.error("MetaImam API Error:", err);
     return { error: true, message: "Network error. Please try again later." };
   }
 }
@@ -435,6 +443,11 @@ function clearAuthMessage(view) {
   if (statusEl) statusEl.classList.add("hidden");
 }
 
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(email);
+}
+
 async function handleAuthSubmit(type) {
   let endpoint = "";
   let payload = {};
@@ -445,6 +458,8 @@ async function handleAuthSubmit(type) {
     const email = document.getElementById("loginEmail")?.value;
     const password = document.getElementById("loginPassword")?.value;
     if (!email || !password) { showAuthMessage("login", "Please enter email and password"); return; }
+    if (!validateEmail(email)) { showAuthMessage("login", "Invalid email format"); return; }
+    if (password.length < 6) { showAuthMessage("login", "Password must be at least 6 characters"); return; }
     endpoint = "/api/auth/login";
     payload = { email, password };
     submitBtn = document.querySelector('[data-action="loginSubmit"]');
@@ -453,6 +468,8 @@ async function handleAuthSubmit(type) {
     const email = document.getElementById("signUpEmail")?.value;
     const password = document.getElementById("signUpPassword")?.value;
     if (!name || !email || !password) { showAuthMessage("signUp", "Please fill all fields"); return; }
+    if (!validateEmail(email)) { showAuthMessage("signUp", "Invalid email format"); return; }
+    if (password.length < 6) { showAuthMessage("signUp", "Password must be at least 6 characters"); return; }
     endpoint = "/api/auth/signup";
     payload = { name, email, password };
     submitBtn = document.querySelector('[data-action="signUpSubmit"]');
@@ -460,6 +477,7 @@ async function handleAuthSubmit(type) {
   } else if (type === "forgot") {
     const email = document.getElementById("forgotEmail")?.value;
     if (!email) { showAuthMessage("forgot", "Please enter your email"); return; }
+    if (!validateEmail(email)) { showAuthMessage("forgot", "Invalid email format"); return; }
     endpoint = "/api/auth/forgot-password";
     payload = { email };
     submitBtn = document.querySelector('[data-action="forgotSubmit"]');
@@ -492,7 +510,7 @@ async function handleAuthSubmit(type) {
     facebook: "https://www.facebook.com/p/MetaMosque-100094183150899/",
     instagram: "https://www.instagram.com/meta_mosque/",
     youtube: "https://www.youtube.com/channel/UC9fQVXzzN3gM26XdSgTw6Rw",
-    privacy: "https://games.tecshield.io/terms-conditions/dbf760bc1fd1a28b2d40",
+    privacy: "https://www.metamosque.com/privacy-policy",
     contact: "https://www.metamosque.com/"
   };
 

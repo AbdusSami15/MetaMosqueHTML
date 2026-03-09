@@ -225,7 +225,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 9999;
+  z-index: 10001;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
@@ -992,7 +992,7 @@ body {
 }
 
 /* General Mobile UI for Tablets/Phones */
-@media (max-width: 1024px) {
+@media (max-width: 1366px) {
   .mobile-run-btn {
     position: fixed;
     right: 15px;
@@ -1772,7 +1772,7 @@ body {
   /* Visual debug: background: rgba(255, 0, 0, 0.1); */
 }
 
-@media (min-width: 1025px) {
+@media (min-width: 1367px) {
 
   /* Hide on large desktops regardless of touch capability */
   .mobile-controls-container {
@@ -1862,14 +1862,13 @@ body {
   z-index: 1;
 }
 
-.chatBtn {
+/* .chatBtn {
   margin-top: 10px;
   margin-left: 0;
-  /* Centered automatically within characterArea */
   min-width: clamp(100px, 10vw, 130px) !important;
   font-size: clamp(12px, 1.2vw, 15px) !important;
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1) !important;
-}
+} */
 
 /* Center Area: Dialog */
 .homeMainContent {
@@ -2388,10 +2387,9 @@ body {
     height: 70%;
   }
 
-  .chatBtn {
+  /* .chatBtn {
     display: none;
-    /* Hide chat button in small landscape to save space */
-  }
+  } */
 
   .homeSidebar {
     flex-basis: 15%;

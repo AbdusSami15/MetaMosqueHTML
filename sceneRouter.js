@@ -7,7 +7,7 @@ if (typeof window !== "undefined") {
   window.resolveAssetUrl = resolveUrl;
 }
 
-const mainMenu = document.getElementById("mainMenu");
+const homeScreen = document.getElementById("homeScreen");
 const loadingOverlay = document.getElementById("loadingOverlay");
 const sceneRoot = document.getElementById("sceneRoot");
 const globalOptionsBtn = document.getElementById("globalOptionsBtn");
@@ -23,7 +23,7 @@ async function enterScene(sceneId) {
   if (typeof window.stopHomeIntro === "function") window.stopHomeIntro();
   if (currentSceneId) exitScene();
 
-  hide(mainMenu);
+  hide(homeScreen);
   if (loadingOverlay) show(loadingOverlay);
   if (globalOptionsBtn) globalOptionsBtn.classList.remove("hidden");
 
@@ -37,7 +37,7 @@ async function enterScene(sceneId) {
     } catch (err) {
       console.error("Scene load failed:", sceneId, err);
       if (loadingOverlay) hide(loadingOverlay);
-      show(mainMenu);
+      show(homeScreen);
       return;
     }
   }
@@ -64,7 +64,7 @@ async function enterScene(sceneId) {
     if (loadingOverlay) hide(loadingOverlay);
     // On failure, show main menu to avoid leaving user with hidden UI
     if (sceneRoot) hide(sceneRoot);
-    if (mainMenu) show(mainMenu);
+    if (homeScreen) show(homeScreen);
     currentSceneId = null;
     currentModule = null;
     return;
@@ -113,7 +113,7 @@ function exitScene() {
   currentSceneId = null;
   currentModule = null;
   if (sceneRoot) hide(sceneRoot);
-  if (mainMenu) show(mainMenu);
+  if (homeScreen) show(homeScreen);
 }
 
 function handleSceneResize(camera, renderer, canvas) {

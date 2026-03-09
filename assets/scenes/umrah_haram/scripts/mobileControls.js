@@ -42,8 +42,14 @@ export class MobileControls {
   isMobile() {
     const ua = navigator.userAgent || navigator.vendor || window.opera;
     const isTouch = (('ontouchstart' in window) || (navigator.maxTouchPoints > 0));
-    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
-    const isNarrow = window.innerWidth <= 1024;
+
+    // iPads often identify as Macintosh in Desktop mode, but have touch capability
+    const isIPad = /iPad/i.test(ua) || (ua.includes("Macintosh") && navigator.maxTouchPoints > 1);
+    const isMobileUA = isIPad || /Android|webOS|iPhone|iPod|BlackBerry|IEMobile|Opera Mini/i.test(ua);
+
+    // Support larger tablets up to iPad Pro Pro 12.9" (1024x1366)
+    const isNarrow = window.innerWidth <= 1366;
+
     return isMobileUA || (isTouch && isNarrow);
   }
 

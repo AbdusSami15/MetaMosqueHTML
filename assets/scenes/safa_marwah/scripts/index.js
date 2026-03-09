@@ -13,6 +13,7 @@
 // }
 
 import * as THREE from "three";
+import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import { loadPoints, isInsidePoint, getPointCenter } from "./points.js";
@@ -36,6 +37,16 @@ let ctx = null;
 let scene = null;
 let camera = null;
 let renderer = null;
+let controls = null;
+
+let velocity = new THREE.Vector3();
+let dir = new THREE.Vector3();
+let right = new THREE.Vector3();
+
+let moveForward = false;
+let moveBack = false;
+let moveLeft = false;
+let moveRight = false;
 
 let modelRoot = null;
 
@@ -73,7 +84,6 @@ const navDown = new THREE.Vector3(0, -1, 0);
 const keys = Object.create(null);
 let yaw = 0;
 let pitch = 0;
-let dragging = false;
 
 let rafId = 0;
 let lastT = 0;
@@ -330,6 +340,7 @@ function tryStartPointMedia() {
   const pos = camera.position;
   if (isInsidePoint(p, pos)) {
     mediaLocked = true;
+    if (controls && typeof controls.unlock === "function") controls.unlock();
 
     setVideoTitle(p.title || "SAFA / MARWAH");
     ensureOverlayVisible();
@@ -478,10 +489,10 @@ function onNextSceneClick() {
     if (window.sceneRouter && typeof window.sceneRouter.exitScene === "function") {
       window.sceneRouter.exitScene();
     }
-    // 2. Hide mainMenu (exitScene shows it), show trainingRoot
-    const mainMenuEl = document.getElementById("mainMenu");
+    // 2. Hide homeScreen (exitScene shows it), show trainingRoot
+    const homeScreenEl = document.getElementById("homeScreen");
     const trainingRootEl = document.getElementById("trainingRoot");
-    if (mainMenuEl) mainMenuEl.classList.add("hidden");
+    if (homeScreenEl) homeScreenEl.classList.add("hidden");
     if (trainingRootEl) trainingRootEl.classList.remove("hidden");
 
     // 3. Tell training.js to start Training 2
@@ -519,18 +530,18 @@ function captureNow() {
   }
 }
 
-function applyYawPitch(newYaw, newPitch) {
-  yaw = newYaw || 0;
-  pitch = newPitch || 0;
-  pitch = clamp(pitch, -1.1, 1.1);
 
-  camera.rotation.order = "YXZ";
-  camera.rotation.y = yaw;
-  camera.rotation.x = pitch;
-}
 
 function onKeyDown(e) {
-  keys[e.code] = true;
+  if (e.code === "KeyW") moveForward = true;
+  if (e.code === "KeyS") moveBack = true;
+  if (e.code === "KeyA") moveLeft = true;
+  if (e.code === "KeyD") moveRight = true;
+
+  if (e.code === "Space") {
+    togglePauseTriggerMedia(ctx);
+    return;
+  }
 
   const tag = e.target && e.target.tagName;
   if (tag === "INPUT" || tag === "TEXTAREA") return;
@@ -538,84 +549,72 @@ function onKeyDown(e) {
   if (e.code === "KeyP") captureNow();
 }
 
-function onKeyUp(e) { keys[e.code] = false; }
-
-function onMouseDown(e) {
-  if (!ctx?.canvas) return;
-  if (e.button !== 0) return;
-  dragging = true;
-  try { ctx.canvas.focus?.(); } catch { }
+function onKeyUp(e) {
+  if (e.code === "KeyW") moveForward = false;
+  if (e.code === "KeyS") moveBack = false;
+  if (e.code === "KeyA") moveLeft = false;
+  if (e.code === "KeyD") moveRight = false;
 }
 
-function onMouseUp() { dragging = false; }
-
-function onMouseMove(e) {
-  if (!dragging) return;
-  yaw -= e.movementX * LOOK_SENS;
-  pitch += e.movementY * LOOK_SENS;
-  applyYawPitch(yaw, pitch);
-}
-
-// Apply mobile look
 function applyMobileLook() {
   if (!mobileControls || !mobileControls.enabled) return;
-  yaw += mobileControls.lookVector.x;
-  pitch += mobileControls.lookVector.y;
-  applyYawPitch(yaw, pitch);
+  if (controls) {
+    controls.getObject().rotation.y += mobileControls.lookVector.x;
+    camera.rotation.x += mobileControls.lookVector.y;
+    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+  }
 }
 
 // "Collider clamp": never allow camera below min ground + eye height
 function clampToGround() {
   const minY = MIN_GROUND_Y + EYE_HEIGHT;
 
-  // if walkY itself is below min, push it up (so movement won't snap down later)
   if (WALK_Y < minY) WALK_Y = minY;
-
-  // enforce current y
   if (camera.position.y < minY) camera.position.y = minY;
 
-  // keep walking at fixed height (smooth / non-jerky)
+  // keep walking at fixed height
   camera.position.y = WALK_Y;
 }
 
-function step(dt) {
+function step(dtClock) {
   if (mediaLocked) return;
 
-  let forward =
-    (keys["KeyW"] ? 1 : 0) + (keys["ArrowUp"] ? 1 : 0) -
-    (keys["KeyS"] ? 1 : 0) - (keys["ArrowDown"] ? 1 : 0);
+  velocity.set(0, 0, 0);
 
-  let strafe =
-    (keys["KeyD"] ? 1 : 0) + (keys["ArrowRight"] ? 1 : 0) -
-    (keys["KeyA"] ? 1 : 0) - (keys["ArrowLeft"] ? 1 : 0);
+  // Keyboard Movement
+  if (controls && controls.isLocked) {
+    camera.getWorldDirection(dir);
+    dir.y = 0;
+    dir.normalize();
 
-  // Add mobile controls
+    if (moveForward) velocity.add(dir);
+    if (moveBack) velocity.sub(dir);
+
+    right.crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+    if (moveRight) velocity.add(right);
+    if (moveLeft) velocity.sub(right);
+  }
+
+  // Mobile Movement
   if (mobileControls && mobileControls.enabled) {
-    forward += mobileControls.moveVector.z;
-    strafe += mobileControls.moveVector.x;
+    const mv = mobileControls.moveVector;
+    if (mv.lengthSq() > 0.00001) {
+      camera.getWorldDirection(dir);
+      dir.y = 0;
+      dir.normalize();
+      right.crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
+
+      velocity.addScaledVector(dir, mv.z);
+      velocity.addScaledVector(right, mv.x);
+    }
   }
 
-  if (forward === 0 && strafe === 0) {
-    clampToGround();
-    return;
+  if (velocity.lengthSq() > 0) {
+    if (velocity.lengthSq() > 1) velocity.normalize();
+    const speed = isRunning ? RUN_MOVE_SPEED : BASE_MOVE_SPEED;
+    camera.position.addScaledVector(velocity, speed * dtClock);
   }
 
-  const speed = (isRunning ? RUN_MOVE_SPEED : BASE_MOVE_SPEED) * dt;
-
-  const dir = new THREE.Vector3();
-  camera.getWorldDirection(dir);
-  dir.y = 0;
-  dir.normalize();
-
-  const right = new THREE.Vector3().crossVectors(dir, new THREE.Vector3(0, 1, 0)).normalize();
-
-  const move = new THREE.Vector3();
-  move.addScaledVector(dir, forward * speed);
-  move.addScaledVector(right, strafe * speed);
-
-  camera.position.add(move);
-
-  // prevent falling below floor + keep fixed height
   clampToGround();
 }
 
@@ -721,7 +720,7 @@ function tick(t) {
   applyMobileLook();
   if (mobileControls) mobileControls.update();
 
-  step(dt);
+  step(dtClock);
   tryStartPointMedia();
 
   if (renderer && scene && camera) renderer.render(scene, camera);
@@ -787,6 +786,8 @@ export async function enter(c) {
   const h = ctx.canvas.clientHeight || window.innerHeight;
 
   camera = new THREE.PerspectiveCamera(75, w / h, 0.1, 3000);
+  camera.rotation.order = "YXZ";
+  camera.rotation.set(0, 0, 0);
 
   // Start position
   const cs = cfg?.cameraStart;
@@ -798,21 +799,22 @@ export async function enter(c) {
 
   // Rotation
   const yyp = cfg?.cameraYawPitch;
-  if (Array.isArray(yyp) && yyp.length >= 2) applyYawPitch(yyp[0], yyp[1]);
-  else applyYawPitch(0, 0);
 
   renderer = new THREE.WebGLRenderer({ canvas: ctx.canvas, antialias: true });
   renderer.setSize(w, h);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
 
-  // focusable canvas
-  if (ctx?.canvas) {
-    ctx.canvas.tabIndex = 0;
-    ctx.canvas.style.outline = "none";
-    ctx.canvas.addEventListener("click", () => {
-      try { ctx.canvas.focus(); } catch { }
-    });
+  controls = new PointerLockControls(camera, document.body);
+  scene.add(controls.getObject());
+
+  ctx.canvas.addEventListener("click", () => {
+    if (controls && !controls.isLocked) controls.lock();
+  });
+
+  if (Array.isArray(yyp) && yyp.length >= 2) {
+    controls.getObject().rotation.y = yyp[0] || 0;
+    camera.rotation.x = yyp[1] || 0;
   }
 
   // lights
@@ -921,10 +923,6 @@ export async function enter(c) {
   document.addEventListener("keydown", onKeyDown);
   document.addEventListener("keyup", onKeyUp);
 
-  ctx.canvas.addEventListener("mousedown", onMouseDown);
-  window.addEventListener("mouseup", onMouseUp);
-  window.addEventListener("mousemove", onMouseMove);
-
   lastT = performance.now();
   tick();
 }
@@ -1028,9 +1026,10 @@ export function exit() {
   document.removeEventListener("keydown", onKeyDown);
   document.removeEventListener("keyup", onKeyUp);
 
-  if (ctx?.canvas) ctx.canvas.removeEventListener("mousedown", onMouseDown);
-  window.removeEventListener("mouseup", onMouseUp);
-  window.removeEventListener("mousemove", onMouseMove);
+  if (controls) {
+    controls.unlock();
+    controls = null;
+  }
 
   if (mobileControls) {
     mobileControls.disable();

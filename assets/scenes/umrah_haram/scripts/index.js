@@ -400,6 +400,7 @@ function updateTawafMarker() {
 function beginStep(point) {
   tawafMediaLocked = true;
   lockMovement();
+  if (controls && typeof controls.unlock === "function") controls.unlock();
 
   if (ctx?.hint) ctx.hint.textContent = `${point.title} (Reached)`;
 

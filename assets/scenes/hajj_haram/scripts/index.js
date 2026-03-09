@@ -52,7 +52,7 @@ let clock = new THREE.Clock();
 
 let demoCharacterWalkTarget = null;
 let demoCharacterWalking = false;
-const DEMO_CHARACTER_WALK_SPEED = 1.6;
+const DEMO_CHARACTER_WALK_SPEED = 0.5;
 
 const KAABA_HALF_X = 9;
 const KAABA_HALF_Z = 9;
@@ -260,6 +260,7 @@ function updateTawafMarker() {
 function beginStep(point) {
     tawafMediaLocked = true;
     lockMovement();
+    if (controls && typeof controls.unlock === "function") controls.unlock();
     if (ctx?.hint) ctx.hint.textContent = `${point.title} (Reached)`;
     const isLastPoint = tawafPoints.length > 0 && activeTawafIndex === tawafPoints.length - 1;
     if (isLastPoint) setNextSceneButton();
@@ -365,7 +366,7 @@ function showHajjChoicePanel() {
 
     menuBtn.onclick = () => {
         localStorage.removeItem("hajj_status");
-        if (ctx?.window?.sceneRouter) ctx.window.sceneRouter.exitScene();
+        if (window.sceneRouter) window.sceneRouter.exitScene();
         else window.location.reload();
     };
 

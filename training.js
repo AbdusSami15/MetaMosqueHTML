@@ -41,6 +41,8 @@ const trainingCharacter = document.getElementById("trainingCharacter");
 const trainingVideo = document.getElementById("trainingVideo");
 const trainingAudio = document.getElementById("trainingAudio");
 const tapToPlayOverlay = document.getElementById("tapToPlayOverlay");
+// Use homeScreen instead of mainMenu
+const homeScreen = document.getElementById("homeScreen");
 
 const loadingOverlay = document.getElementById("loadingOverlay");
 const loadingText = document.getElementById("loadingText");
@@ -512,6 +514,8 @@ window.addEventListener("metamosque:exitTraining", () => {
   disposeTrainingCharacter3D();
 
   if (trainingRoot) trainingRoot.classList.add("hidden");
-  const mainMenu = document.getElementById("mainMenu");
-  if (mainMenu) mainMenu.classList.remove("hidden");
+  // Fixed: mainMenu ID does not exist, use homeScreen
+  if (homeScreen) {
+    homeScreen.classList.remove("hidden");
+  }
 });
