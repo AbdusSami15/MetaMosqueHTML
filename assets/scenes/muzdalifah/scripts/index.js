@@ -5,10 +5,17 @@ import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import {
-    playTriggerMedia,
     stopTriggerMedia,
-    restartTriggerMedia,
-    togglePauseTriggerMedia
+    initMediaSequence,
+    startSequence,
+    nextStep,
+    prevStep,
+    rewind,
+    togglePause,
+    setVideoTitle,
+    setBtnState,
+    setSkipState,
+    getCurrentIndex
 } from "./media.js";
 import { MobileControls } from "./mobileControls.js";
 
@@ -51,8 +58,8 @@ let stonesTriggered = false;
 
 // Sequential Media & Trigger
 let points = [];
-let activePointIdx = 0;
 let triggered = false;
+let completed = false;
 let triggerMesh = null;
 // Input
 const keys = Object.create(null);
@@ -103,8 +110,8 @@ function step(dt) {
     if (!camera) return;
     velocity.set(0, 0, 0);
 
-    // Keyboard
-    if (controls && controls.isLocked) {
+    // Keyboard (available immediately; does not require pointer lock)
+    if (controls) {
         camera.getWorldDirection(_dir);
         _dir.y = 0; _dir.normalize();
         _right.crossVectors(_dir, _up).normalize();
@@ -157,6 +164,9 @@ function updateCharacter(dt) {
             _tmpV.y = characterModel.position.y;
             characterModel.lookAt(_tmpV);
 
+            // Hide Imam when he reaches the green light.
+            if (characterModel) characterModel.visible = false;
+
             if (mixer) {
                 mixer.stopAllAction();
                 if (idleAction) idleAction.play();
@@ -207,18 +217,44 @@ function checkTrigger() {
     if (!triggered) {
         const dx = camera.position.x - TRIGGER_POS.x;
         const dz = camera.position.z - TRIGGER_POS.z;
-        if (dx * dx + dz * dz < TRIGGER_DIST * TRIGGER_DIST) {
+    if (dx * dx + dz * dz < TRIGGER_DIST * TRIGGER_DIST) {
             triggered = true;
             if (triggerMesh) triggerMesh.visible = false;
             if (controls) controls.unlock();
-            if (points.length > 0) playTriggerMedia(ctx, points[0]);
-            bindUI();
+
+            // Start full media sequence
+            if (points.length > 0) {
+                setVideoTitle("MUZDALIFAH");
+                initMediaSequence(ctx, points, {
+                    isNavLocked: false, 
+                    disableSceneBtnOnEnd: true, // As requested, keep SCENE button OFF
+                    onEnded: (idx) => {
+                        console.log("[Muzdalifah] Ended point index:", idx);
+                        
+                        if (idx === 2) {
+                            completed = true;
+                            // Explicitly unlock NEXT STEP for the walking transition
+                            setBtnState("sceneNextStep", true);
+                            // Ensure SCENE button stays OFF as requested
+                            setSkipState(false);
+                        }
+                    }
+                });
+
+                // Auto-start disabled as requested
+
+                // Initially ensure NEXT STEP is locked (even if media.js tries to enable it for skipping)
+                // We want them to watch the full sequence
+                setBtnState("sceneNextStep", false);
+                setSkipState(false);
+            }
+
             if (ctx.hint) ctx.hint.textContent = "Media started · Use HUD to navigate";
         }
     }
 
     // 2. Stones Trigger (appear after media ends)
-    if (stonesTriggerMesh && stonesTriggerMesh.visible && !stonesTriggered) {
+    if (stonesTriggerMesh && !stonesTriggered) {
         const dx = camera.position.x - STONES_POS.x;
         const dz = camera.position.z - STONES_POS.z;
         if (dx * dx + dz * dz < TRIGGER_DIST * TRIGGER_DIST) {
@@ -238,7 +274,7 @@ function onKeyDown(e) {
     if (e.code === "KeyD") moveRight = true;
 
     if (e.code === "Space") {
-        togglePauseTriggerMedia(ctx);
+        togglePause();
         return;
     }
 
@@ -290,47 +326,45 @@ function tick(t) {
 }
 
 // ─── UI Binding ──────────────────────────────────────────────────────────────
-function updateHUDButtons() {
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const sceneBtn = document.getElementById("sceneNextSceneBtn");
-
-    // NEXT button is ALWAYS enabled here so final click triggers walk
-    if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.classList.remove("hudBtnDisabled");
-    }
-
-    // SCENE button is DISABLED / HIDDEN as requested for this scene's custom flow
-    if (sceneBtn) {
-        sceneBtn.style.display = "none";
-    }
-}
-
-function goNextPoint() {
-    if (activePointIdx < points.length - 1) {
-        activePointIdx++;
-        const item = points[activePointIdx];
-        playTriggerMedia(ctx, item);
-        updateHUDButtons();
-    } else {
-        // Final video "Next" button clicked -> Start walking sequence
-        startWalkingSequence();
-    }
-}
-
-
 function bindUI() {
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const restartBtn = document.getElementById("sceneVideoRestart");
-    const pauseBtn = document.getElementById("sceneVideoPause");
-    const sceneBtn = document.getElementById("sceneNextSceneBtn");
+    const controlsArea = document.querySelector('.sceneVideoControls');
+    if (controlsArea) {
+        controlsArea.onclick = (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
 
-    if (nextBtn) nextBtn.onclick = (e) => { e.stopPropagation(); goNextPoint(); };
-    if (restartBtn) restartBtn.onclick = (e) => { e.stopPropagation(); if (points[activePointIdx]) restartTriggerMedia(ctx, points[activePointIdx]); };
-    if (pauseBtn) pauseBtn.onclick = (e) => { e.stopPropagation(); togglePauseTriggerMedia(ctx); };
-    if (sceneBtn) sceneBtn.onclick = (e) => { e.stopPropagation(); onNextSceneClick(); };
+            const action = btn.getAttribute('data-action');
+            console.log("[Muzdalifah] Control clicked:", action);
 
-    updateHUDButtons();
+            switch (action) {
+                case "scenePlay":
+                    startSequence();
+                    break;
+                case "sceneRewind":
+                    rewind();
+                    break;
+                case "scenePause":
+                    togglePause();
+                    break;
+                case "scenePrevStep":
+                    prevStep();
+                    break;
+                case "sceneNextStep":
+                    e.stopPropagation();
+                    const curIdx = getCurrentIndex();
+                    if (curIdx === points.length - 1) {
+                        startWalkingSequence();
+                    } else {
+                        nextStep();
+                    }
+                    break;
+                case "sceneNextScene":
+                    e.stopPropagation();
+                    onNextSceneClick();
+                    break;
+            }
+        };
+    }
 }
 
 function startWalkingSequence() {
@@ -435,7 +469,11 @@ function showSuccessPanel() {
 }
 
 function onNextSceneClick() {
-    // This probably won't be called since we hid the button, but keeping for safety
+    if (!completed) {
+        console.warn("[Muzdalifah] Cannot proceed: Playlist not finished");
+        return;
+    }
+
     stopTriggerMedia(ctx);
     if (window.sceneRouter) window.sceneRouter.exitScene();
 }
@@ -446,19 +484,7 @@ export async function enter(c) {
     const { canvas, basePath } = ctx;
     if (!canvas) return;
 
-    // ✅ HUD Standardization: Reset to neutral state on entry
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const sceneBtn = document.getElementById("sceneNextSceneBtn");
-    if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.classList.remove("hudBtnDisabled");
-        nextBtn.style.display = "block";
-    }
-    if (sceneBtn) {
-        sceneBtn.disabled = true;
-        sceneBtn.classList.add("hudBtnDisabled");
-        sceneBtn.style.display = "block";
-    }
+    // ✅ HUD Standardization: Reset handled via initMediaSequence later
 
     let cfg = {};
     try {
@@ -467,7 +493,6 @@ export async function enter(c) {
     } catch (_) { }
 
     points = cfg?.points || [];
-    activePointIdx = 0;
 
     const camStart = cfg?.cameraStart || [0, 1.8, 12];
     MIN_GROUND_Y = cfg?.groundY || 0;
@@ -562,19 +587,26 @@ export async function enter(c) {
 
     // Load Env
     const envUrl = makeUrl(basePath, cfg?.model?.path || "media/models/muzdalifah_placeholder.glb");
-    loader.load(envUrl, (gltf) => {
-        envModel = gltf.scene;
-        envModel.scale.setScalar(cfg?.model?.scale || 1);
-        const p = cfg?.model?.position || [0, 0, 0];
-        envModel.position.set(p[0], p[1], p[2]);
-        scene.add(envModel);
+    const envPromise = new Promise((resolve) => {
+        loader.load(envUrl, (gltf) => {
+            envModel = gltf.scene;
+            envModel.scale.setScalar(cfg?.model?.scale || 1);
+            const p = cfg?.model?.position || [0, 0, 0];
+            envModel.position.set(p[0], p[1], p[2]);
+            scene.add(envModel);
+            resolve(true);
+        }, undefined, (err) => {
+            console.warn("[Muzdalifah] Env Model missing:", err);
+            resolve(false);
+        });
     });
 
     // Load Character
     const charCfg = cfg?.character;
-    if (charCfg?.path) {
+    const charPromise = charCfg?.path ? new Promise((resolve) => {
         loader.load(makeUrl(basePath, charCfg.path), (gltf) => {
             characterModel = gltf.scene;
+            characterModel.visible = true;
 
             // Significantly increased scale as requested
             const baseScale = charCfg.scale || 1.1;
@@ -591,8 +623,15 @@ export async function enter(c) {
                 idleAction = mixer.clipAction(idleClip);
                 idleAction.play();
             }
+            resolve(true);
+        }, undefined, (err) => {
+            console.warn("[Muzdalifah] Character Model missing:", err);
+            resolve(false);
         });
-    }
+    }) : Promise.resolve(false);
+
+    // Keep global loading overlay until key assets finish loading
+    await Promise.all([envPromise, charPromise]);
 
     // No auto-play here anymore. Handled by checkTrigger()
     triggered = false;

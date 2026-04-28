@@ -18,10 +18,13 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 
 import { loadPoints, isInsidePoint, getPointCenter } from "./points.js";
 import {
-  playTriggerMedia,
   stopTriggerMedia,
-  restartTriggerMedia,
-  togglePauseTriggerMedia
+  initMediaSequence,
+  startSequence,
+  nextStep as mediaNextStep,
+  prevStep,
+  rewind,
+  togglePause
 } from "./media.js";
 import { MobileControls } from "./mobileControls.js";
 
@@ -56,11 +59,25 @@ let mediaLocked = false;
 let completed = false;
 
 let marker = null;
+let directionArrow = null;
+let directionArrowRoot = null;
+let guidanceWaypoint = new THREE.Vector3();
+let guidanceWaypointReady = false;
+const GUIDANCE_STEP_DIST = 14.5;
+const GUIDANCE_REACH_DIST = 2.2;
+const SAFA_ARROW_START = new THREE.Vector3(-116.628, 9.0, -134.27);
+let arrowAnimT = 0;
+let arrowAnimAxis = new THREE.Vector3(0, 0, 1);
+let arrowAnimBasePos = new THREE.Vector3();
 
 // ✅ Dua UI state
 let safaDuaShown = false;
 let duaUi = null;
 let duaAutoHideTimer = null;
+
+let pathLimit = null;
+const SAFA_POS = new THREE.Vector3(-119.203, 8.6, -141.535);
+const MARWAH_POS = new THREE.Vector3(-117.157, 8.6, 234.938);
 
 // Mobile controls
 let mobileControls = null;
@@ -134,17 +151,9 @@ function ensureOverlayVisible() {
 }
 
 function setSceneButtonEnabled(enabled) {
-  const nextBtn = document.getElementById("sceneVideoNext");
   const sceneBtn = document.getElementById("sceneNextSceneBtn");
 
-  console.log("[SafaMarwah] setSceneButtonEnabled:", { enabled, nextBtn: !!nextBtn, sceneBtn: !!sceneBtn });
-
-  if (nextBtn) {
-    nextBtn.disabled = enabled;
-    nextBtn.setAttribute("aria-disabled", enabled ? "true" : "false");
-    if (enabled) nextBtn.classList.add("hudBtnDisabled");
-    else nextBtn.classList.remove("hudBtnDisabled");
-  }
+  console.log("[SafaMarwah] setSceneButtonEnabled:", { enabled, sceneBtn: !!sceneBtn });
 
   if (sceneBtn) {
     sceneBtn.disabled = !enabled;
@@ -153,7 +162,7 @@ function setSceneButtonEnabled(enabled) {
     else sceneBtn.classList.remove("hudBtnDisabled");
   }
 
-  console.log("[SafaMarwah] Button states updated");
+  console.log("[SafaMarwah] Scene button state updated");
 }
 
 function setVideoTitle(text) {
@@ -324,6 +333,96 @@ function moveMarkerToPoint(i) {
   setHint(`${points[i].title || points[i].id || "Point"} (Reach)`);
 }
 
+function createDirectionArrow() {
+  const loader = new GLTFLoader();
+  const arrowUrl = resolveUrl(ctx?.basePath || "", "media/models/3D Arrow.glb");
+  loader.load(
+    arrowUrl,
+    (gltf) => {
+      directionArrowRoot = gltf.scene;
+      directionArrowRoot.visible = true;
+      directionArrowRoot.scale.setScalar(0.8);
+      directionArrowRoot.rotation.set(0, 0, 0);
+      arrowAnimBasePos.copy(directionArrowRoot.position);
+      const bbox = new THREE.Box3().setFromObject(directionArrowRoot);
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+      if (size.x >= size.y && size.x >= size.z) arrowAnimAxis.set(1, 0, 0);
+      else if (size.y >= size.x && size.y >= size.z) arrowAnimAxis.set(0, 1, 0);
+      else arrowAnimAxis.set(0, 0, 1);
+      directionArrowRoot.traverse((child) => {
+        if (!child.isMesh || !child.material) return;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        for (const m of mats) {
+          if ("color" in m) m.color = new THREE.Color(0x0b8f3a);
+          if ("emissive" in m) m.emissive = new THREE.Color(0x0a5c2a);
+          if ("emissiveIntensity" in m) m.emissiveIntensity = 1.8;
+        }
+      });
+      directionArrow = new THREE.Group();
+      directionArrow.visible = false;
+      directionArrow.add(directionArrowRoot);
+      scene.add(directionArrow);
+    },
+    undefined,
+    () => {
+      directionArrowRoot = null;
+      directionArrow = null;
+    }
+  );
+}
+
+function updateDirectionArrow() {
+  if (!directionArrow || !camera || completed || !points.length) {
+    if (directionArrow) directionArrow.visible = false;
+    guidanceWaypointReady = false;
+    return;
+  }
+
+  const active = points[Math.max(0, Math.min(activeIndex, points.length - 1))];
+  const center = active ? getPointCenter(active) : null;
+  if (!center) {
+    directionArrow.visible = false;
+    guidanceWaypointReady = false;
+    return;
+  }
+  const greenTarget = new THREE.Vector3(center.x, WALK_Y, center.z);
+
+  const toTargetFromPlayer = new THREE.Vector3(greenTarget.x - camera.position.x, 0, greenTarget.z - camera.position.z);
+  if (toTargetFromPlayer.lengthSq() < 0.25) {
+    directionArrow.visible = false;
+    guidanceWaypointReady = false;
+    return;
+  }
+
+  if (!guidanceWaypointReady) {
+    guidanceWaypoint.copy(SAFA_ARROW_START);
+    guidanceWaypointReady = true;
+  }
+
+  const dx = camera.position.x - guidanceWaypoint.x;
+  const dz = camera.position.z - guidanceWaypoint.z;
+  if (dx * dx + dz * dz <= GUIDANCE_REACH_DIST * GUIDANCE_REACH_DIST) {
+    const stepDir = new THREE.Vector3(greenTarget.x - guidanceWaypoint.x, 0, greenTarget.z - guidanceWaypoint.z);
+    const distToTarget = stepDir.length();
+    if (distToTarget <= GUIDANCE_STEP_DIST) {
+      guidanceWaypoint.copy(greenTarget);
+    } else if (distToTarget > 0.0001) {
+      stepDir.normalize();
+      guidanceWaypoint.addScaledVector(stepDir, GUIDANCE_STEP_DIST);
+      guidanceWaypoint.y = WALK_Y;
+    }
+  }
+
+  directionArrow.position.copy(guidanceWaypoint);
+  directionArrow.position.y -= 1.8;
+  const dxLook = greenTarget.x - guidanceWaypoint.x;
+  const dzLook = greenTarget.z - guidanceWaypoint.z;
+  const yaw = Math.atan2(dxLook, dzLook) - Math.PI / 2;
+  directionArrow.rotation.set(0, yaw, 0);
+  directionArrow.visible = true;
+}
+
 function stopAllMedia() {
   stopTriggerMedia(ctx);
   mediaLocked = false;
@@ -345,24 +444,19 @@ function tryStartPointMedia() {
     setVideoTitle(p.title || "SAFA / MARWAH");
     ensureOverlayVisible();
 
-    const isLastPoint = activeIndex === points.length - 1;
+    console.log("[SafaMarwah] Initializing point media sequence:", { pointId: p.id, activeIndex, totalPoints: points.length });
 
-    console.log("[SafaMarwah] Starting point media:", { pointId: p.id, activeIndex, totalPoints: points.length, isLastPoint });
-
-    // Disable next button if this is the last point
-    if (isLastPoint) {
-      console.log("[SafaMarwah] Last point detected, enabling scene button and marking completed");
-      completed = true;
-      setSceneButtonEnabled(true);
-    }
-
-    playTriggerMedia(ctx, p, {
+    initMediaSequence(ctx, p, {
+      isNavLocked: true,
+      isFinalPoint: activeIndex === points.length - 1,
       onEnded: () => {
         setHint(`${p.title || p.id} (Done)`);
+        // ✅ Mark as completed when last point's media is done
+        if (activeIndex === points.length - 1) completed = true;
       }
     });
 
-    setHint(`${p.title || p.id} (Playing)`);
+    setHint(`${p.title || p.id} — Press PLAY`);
   }
 }
 
@@ -496,7 +590,7 @@ function onNextSceneClick() {
     if (trainingRootEl) trainingRootEl.classList.remove("hidden");
 
     // 3. Tell training.js to start Training 2
-    const detail = { trainingId: 2, nextSceneName: "AL HARAM", nextSceneId: "umrah_haram", mode };
+    const detail = { trainingId: 2, nextSceneName: "", nextSceneId: "", mode };
     window.dispatchEvent(new CustomEvent("metamosque:startTraining", { detail }));
   }
 }
@@ -539,7 +633,7 @@ function onKeyDown(e) {
   if (e.code === "KeyD") moveRight = true;
 
   if (e.code === "Space") {
-    togglePauseTriggerMedia(ctx);
+    togglePause();
     return;
   }
 
@@ -574,6 +668,19 @@ function clampToGround() {
 
   // keep walking at fixed height
   camera.position.y = WALK_Y;
+
+  // Corridor Clamp (Left/Right)
+  if (pathLimit && pathLimit.width) {
+    const pos = camera.position;
+    const halfWidth = pathLimit.width / 2;
+
+    // Interpolate expected X between Safa and Marwah based on Z
+    const t = (pos.z - SAFA_POS.z) / (MARWAH_POS.z - SAFA_POS.z);
+    const expectedX = SAFA_POS.x + (MARWAH_POS.x - SAFA_POS.x) * t;
+
+    // Clamp X to [expectedX - halfWidth, expectedX + halfWidth]
+    pos.x = Math.max(expectedX - halfWidth, Math.min(expectedX + halfWidth, pos.x));
+  }
 }
 
 function step(dtClock) {
@@ -581,8 +688,8 @@ function step(dtClock) {
 
   velocity.set(0, 0, 0);
 
-  // Keyboard Movement
-  if (controls && controls.isLocked) {
+  // Keyboard movement (available immediately; does not require pointer lock)
+  if (controls) {
     camera.getWorldDirection(dir);
     dir.y = 0;
     dir.normalize();
@@ -629,10 +736,15 @@ function tick(t) {
   }
 
   const dtClock = clock.getDelta(); // Animation delta
+  arrowAnimT += dtClock;
 
 
   if (demoCharacterMixer) {
     demoCharacterMixer.update(dtClock);
+  }
+
+  if (directionArrowRoot) {
+    directionArrowRoot.position.copy(arrowAnimBasePos).addScaledVector(arrowAnimAxis, Math.sin(arrowAnimT * 6.2) * 0.24);
   }
 
   // ✅ Character Movement Logic
@@ -719,6 +831,7 @@ function tick(t) {
 
   applyMobileLook();
   if (mobileControls) mobileControls.update();
+  updateDirectionArrow();
 
   step(dtClock);
   tryStartPointMedia();
@@ -736,18 +849,39 @@ function onResize() {
 }
 
 function bindUI() {
-  const nextBtn = document.getElementById("sceneVideoNext");
-  const restartBtn = document.getElementById("sceneVideoRestart");
-  const pauseBtn = document.getElementById("sceneVideoPause");
-  const sceneBtn = document.getElementById("sceneNextSceneBtn");
+  const controlsArea = document.querySelector('.sceneVideoControls');
+  if (controlsArea) {
+    controlsArea.onclick = (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
 
-  if (nextBtn) nextBtn.onclick = () => goNextPoint();
-  if (restartBtn) restartBtn.onclick = () => {
-    if (!points[activeIndex]) return;
-    restartTriggerMedia(ctx, points[activeIndex]);
-  };
-  if (pauseBtn) pauseBtn.onclick = () => togglePauseTriggerMedia(ctx);
-  if (sceneBtn) sceneBtn.onclick = (e) => { e.stopPropagation(); onNextSceneClick(); };
+      const action = btn.getAttribute('data-action');
+      console.log("[SafaMarwah] Control clicked:", action);
+
+      switch (action) {
+        case "scenePlay":
+          startSequence();
+          break;
+        case "sceneRewind":
+          rewind();
+          break;
+        case "scenePause":
+          togglePause();
+          break;
+        case "scenePrevStep":
+          prevStep();
+          break;
+        case "sceneNextStep":
+          // ✅ Advance ritual (moves character, stops current media)
+          goNextPoint();
+          break;
+        case "sceneNextScene":
+          e.stopPropagation();
+          onNextSceneClick();
+          break;
+      }
+    };
+  }
 }
 
 export async function enter(c) {
@@ -767,6 +901,7 @@ export async function enter(c) {
   const gy = (typeof cfg?.groundY === "number") ? cfg.groundY : 0;
   MIN_GROUND_Y = (typeof cfg?.minGroundY === "number") ? cfg.minGroundY : gy;
   EYE_HEIGHT = (typeof cfg?.eyeHeight === "number") ? cfg.eyeHeight : 1.6;
+  pathLimit = cfg?.pathLimit || null;
 
   points = await loadPoints(basePath);
   points = (points || []).map(p => ({
@@ -857,6 +992,7 @@ export async function enter(c) {
   // marker (still create it, but maybe hide depending on logic)
   marker = createMarker();
   scene.add(marker);
+  createDirectionArrow();
 
   // Mobile controls
   mobileControls = new MobileControls();
@@ -1059,6 +1195,10 @@ export function exit() {
   camera = null;
   modelRoot = null;
   marker = null;
+  directionArrowRoot = null;
+  directionArrow = null;
+  guidanceWaypointReady = false;
+  arrowAnimT = 0;
   points = [];
   ctx = null;
 }

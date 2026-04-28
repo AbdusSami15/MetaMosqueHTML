@@ -277,7 +277,7 @@
   <!-- ================= NEW SCENE (First-Person + Triggers) ================= -->
   <div class="sceneRoot hidden" id="sceneRoot">
     <canvas id="sceneCanvas"></canvas>
-    <div class="sceneHint" id="sceneHint">Click to look around · WASD to move</div>
+    <div class="sceneHint" id="sceneHint">WASD to move</div>
 
     <!-- ✅ NEW: Dua panel for FIRST NEXT click (Haram only) -->
     <aside class="duaSidePanel hidden" id="duaSidePanel" aria-hidden="true">
@@ -294,20 +294,29 @@
       <div class="sceneVideoFrame">
         <div class="sceneVideoTitle" id="sceneVideoTitle">UMRAH: MAKKAH</div>
         <div class="sceneVideoInner">
-          <video id="sceneVideo" playsinline preload="metadata"></video>
+          <video id="sceneVideo" playsinline webkit-playsinline muted preload="metadata"></video>
+          <div class="media-loader hidden" id="sceneMediaLoader">
+            <div class="spinner"></div>
+            <span>Loading Media...</span>
+          </div>
+          <div class="tapToPlayOverlay hidden" id="sceneTapToPlayOverlay">
+            <span>Tap to Play</span>
+          </div>
         </div>
       </div>
 
-      <div class="sceneVideoControls">
-        <button class="hudBtn" type="button" id="sceneVideoNext" aria-label="Next point">NEXT</button>
-        <button class="hudBtn" type="button" id="sceneVideoRestart" aria-label="Restart">RESTART</button>
-        <button class="hudBtn" type="button" id="sceneVideoPause" aria-label="Pause">PAUSE</button>
+    <div class="sceneVideoControls">
+      <button class="hudBtn" type="button" data-action="scenePlay">PLAY</button>
+      <button class="hudBtn" type="button" data-action="sceneRewind">REWIND</button>
+      <button class="hudBtn" type="button" data-action="scenePause">PAUSE</button>
+      <button class="hudBtn" type="button" data-action="scenePrevStep">PREV STEP</button>
+      <button class="hudBtn" type="button" data-action="sceneNextStep">NEXT STEP</button>
 
-        <button class="hudBtn hudBtnDisabled" type="button" id="sceneNextSceneBtn" data-action="sceneNextScene" disabled
-          aria-disabled="true" aria-label="Next scene">
-          SCENE
-        </button>
-      </div>
+      <button class="hudBtn hudBtnDisabled" type="button" id="sceneNextSceneBtn" data-action="sceneNextScene" disabled
+        aria-disabled="true" aria-label="Next scene">
+        SCENE
+      </button>
+    </div>
 
       <audio id="sceneAudio" preload="metadata"></audio>
     </div>
@@ -326,6 +335,15 @@
 
   <!-- ================= TRAINING SCENE ================= -->
   <div class="trainingRoot hidden" id="trainingRoot">
+    <!-- Dev test scene shortcuts — hidden; set display:flex on .test-buttons-row to show -->
+    <div class="test-buttons-row" style="position: absolute; top: 20px; left: 20px; z-index: 100000; display: none; gap: 10px;" aria-hidden="true">
+      <button id="testHaramBtn" class="pillBtn pillGold">TEST HARAM</button>
+      <button id="testSafaUmrahBtn" class="pillBtn pillGold">TEST SAFA (UMRAH)</button>
+      <button id="testSafaHajjBtn" class="pillBtn pillGold">TEST SAFA (HAJJ)</button>
+      <button id="testMinaBtn" class="pillBtn pillGold">TEST MINA</button>
+      <button id="testMinaRamiBtn" class="pillBtn pillGold">TEST MINA RAMI</button>
+      <button id="testMuzdalifahBtn" class="pillBtn pillGold">TEST MUZDALIFAH</button>
+    </div>
     <div class="trainingBg" id="trainingBg" aria-hidden="true"></div>
     <div class="trainingViewport">
       <div class="trainingHUD">
@@ -334,6 +352,10 @@
           <div class="trainingVideoInner">
             <video id="trainingVideo" playsinline preload="metadata"></video>
             <audio id="trainingAudio" preload="metadata"></audio>
+            <div class="media-loader hidden" id="trainingMediaLoader">
+              <div class="spinner"></div>
+              <span>Loading Media...</span>
+            </div>
             <div class="tapToPlayOverlay hidden" id="tapToPlayOverlay">
               <span>Tap to Play</span>
             </div>
@@ -341,15 +363,28 @@
         </div>
 
         <div class="trainingControls">
-          <button class="hudBtn" type="button" data-action="trainNext">NEXT</button>
-          <button class="hudBtn" type="button" data-action="trainRestart">RESTART</button>
+          <button class="hudBtn" type="button" data-action="trainPlay">PLAY</button>
+          <button class="hudBtn" type="button" data-action="trainRewind">REWIND</button>
           <button class="hudBtn" type="button" data-action="trainPause">PAUSE</button>
-          <button class="hudBtn" type="button" data-action="trainSkip">SKIP</button>
+          <button class="hudBtn" type="button" data-action="trainPrevStep">PREV STEP</button>
+          <button class="hudBtn" type="button" data-action="trainNextStep">NEXT STEP</button>
+          <button class="hudBtn hudBtnDisabled" type="button" data-action="trainSkip" disabled aria-disabled="true">SCENE</button>
         </div>
       </div>
     </div>
   </div>
 
+  </div>
+
+  <!-- ================= ORIENTATION OVERLAY ================= -->
+  <div class="orientationOverlay hidden" id="orientationOverlay">
+    <div class="orientationContent">
+      <div class="rotateIconContainer">
+        <img src="assets/ui/rotate-device.png" alt="Rotate Device" class="rotateIcon" />
+      </div>
+      <div class="orientationText">PLEASE ROTATE YOUR DEVICE</div>
+      <div class="orientationSubtext">This experience is best viewed in landscape mode.</div>
+    </div>
   </div>
 
   <script type="module" src="./sceneRouter.js"></script>

@@ -7,8 +7,16 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import {
     playTriggerMedia,
     stopTriggerMedia,
-    restartTriggerMedia,
-    togglePauseTriggerMedia
+    initMediaSequence,
+    startSequence,
+    nextStep,
+    prevStep,
+    rewind,
+    togglePause,
+    setVideoTitle,
+    setBtnState,
+    setSkipState,
+    getCurrentIndex
 } from "./media.js";
 import { MobileControls } from "./mobileControls.js";
 
@@ -36,10 +44,74 @@ const TRIGGER_DIST = 4.0;
 
 // Sequential Media & Trigger
 let points = [];
-let activePointIdx = 0;
 let triggered = false;
+let completed = false;
+let awaitingHaramTransition = false;
+/** Final ziarat segment active (load → until audio ends). */
+let finalZiaratMode = false;
+/** Loaded but user has not pressed PLAY yet. */
+let finalZiaratAwaitingPlay = false;
+/** Final clip is actively playing (started). */
+let finalZiaratPlaying = false;
 let ramiTriggered = false; // Flag for Rami phase
 let triggerMesh = null;
+
+const SCENE_HUD_ACTIONS = [
+    "scenePlay",
+    "sceneRewind",
+    "scenePause",
+    "scenePrevStep",
+    "sceneNextStep",
+    "sceneNextScene"
+];
+
+function setAllSceneHudButtons(enabled) {
+    for (const action of SCENE_HUD_ACTIONS) {
+        setBtnState(action, enabled);
+    }
+}
+
+/** Final ziarat: PLAY / PAUSE / REWIND on; rest off until clip ends. */
+function setFinalZiaratHudPlaybackControls() {
+    // While final ziarat is active, only these controls are relevant.
+    // PLAY is disabled once playback actually starts.
+    setBtnState("scenePlay", true);
+    setBtnState("scenePause", true);
+    setBtnState("sceneRewind", true);
+    setBtnState("scenePrevStep", false);
+    setBtnState("sceneNextStep", false);
+    setSkipState(false);
+}
+
+function handleFinalZiaratPlayClick() {
+    if (!ctx?.videoEl || !ctx?.audioEl) return;
+    const v = ctx.videoEl;
+    const a = ctx.audioEl;
+    if (finalZiaratAwaitingPlay) {
+        finalZiaratAwaitingPlay = false;
+        finalZiaratPlaying = true;
+        // Once playback starts, lock PLAY like other scenes (avoid re-trigger spam).
+        setBtnState("scenePlay", false);
+        Promise.all([v.play(), a.play()]).catch((err) => {
+            finalZiaratPlaying = false;
+            finalZiaratAwaitingPlay = true;
+            setBtnState("scenePlay", true);
+            console.warn("[Mina Rami] Final ziarat play failed:", err);
+        });
+        return;
+    }
+    if (v.paused || a.paused) {
+        finalZiaratPlaying = true;
+        setBtnState("scenePlay", false);
+        Promise.all([v.play(), a.play()]).catch(() => { });
+    } else {
+        v.currentTime = 0;
+        a.currentTime = 0;
+        finalZiaratPlaying = true;
+        setBtnState("scenePlay", false);
+        Promise.all([v.play(), a.play()]).catch(() => { });
+    }
+}
 
 // Projectiles
 let activeStones = [];
@@ -96,8 +168,8 @@ function step(dt) {
     if (!camera) return;
     velocity.set(0, 0, 0);
 
-    // Keyboard
-    if (controls && controls.isLocked) {
+    // Keyboard (available immediately; does not require pointer lock)
+    if (controls) {
         camera.getWorldDirection(_dir);
         _dir.y = 0; _dir.normalize();
         _right.crossVectors(_dir, _up).normalize();
@@ -145,6 +217,9 @@ function updateCharacter(dt) {
             characterState = "AT_STONES";
             characterModel.position.copy(RAMI_POS);
 
+            // Remove Imam once he reaches the green light.
+            characterModel.visible = false;
+
             // Imam reached destination, now show the particle for the player to trigger Rami
             if (triggerMesh) {
                 triggerMesh.position.copy(RAMI_POS);
@@ -190,8 +265,24 @@ function checkTrigger() {
             triggered = true;
             if (triggerMesh) triggerMesh.visible = false;
             if (controls) controls.unlock();
-            if (points.length > 0) playTriggerMedia(ctx, points[0]);
-            bindUI();
+
+            if (points.length > 0) {
+                setVideoTitle("MINA RAMI");
+                initMediaSequence(ctx, points, {
+                    isNavLocked: false,
+                    disableSceneBtnOnEnd: true,
+                    onEnded: (idx) => {
+                        if (idx === points.length - 1) {
+                            completed = true;
+                            setBtnState("sceneNextStep", true);
+                            setSkipState(false);
+                        }
+                    }
+                });
+                setBtnState("sceneNextStep", false);
+                setSkipState(false);
+            }
+
             if (ctx.hint) ctx.hint.textContent = "Media started · Use HUD to navigate";
         }
     }
@@ -218,34 +309,29 @@ function checkTrigger() {
 
             // Play final media: GoziaratNew audio + RamiVideo1 video
             const finalPoint = {
-                video: "media/videos/RamiVideo1.mp4", // RamiVideo1
-                audio: "media/audios/GoziaratNew.mp3", // GoziaratNew
+                video: "media/videos/RamiVideo1.mp4",
+                audio: "media/audios/GoziaratNew.mp3",
                 title: "FINAL ZIARAT"
             };
-            // Disable HUD "Next" during ziarat
-            const nextBtn = document.getElementById("sceneVideoNext");
-            const sceneBtn = document.getElementById("sceneNextSceneBtn");
-            if (nextBtn) {
-                nextBtn.disabled = true;
-                nextBtn.classList.add("hudBtnDisabled");
-            }
-            if (sceneBtn) sceneBtn.style.display = "none";
 
+            setVideoTitle("FINAL ZIARAT");
+            awaitingHaramTransition = false;
+            finalZiaratMode = true;
+            finalZiaratAwaitingPlay = true;
+            finalZiaratPlaying = false;
+            setFinalZiaratHudPlaybackControls();
+
+            stopTriggerMedia(ctx);
             playTriggerMedia(ctx, finalPoint, {
+                autoplay: false,
                 onEnded: () => {
+                    finalZiaratMode = false;
+                    finalZiaratAwaitingPlay = false;
+                    finalZiaratPlaying = false;
                     localStorage.setItem("hajj_status", "completed");
-                    if (sceneBtn) {
-                        sceneBtn.style.display = "block";
-                        sceneBtn.disabled = false;
-                        sceneBtn.classList.remove("hudBtnDisabled");
-                        sceneBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            stopTriggerMedia(ctx);
-                            if (window.sceneRouter && window.sceneRouter.enterScene) {
-                                window.sceneRouter.enterScene('umrah_haram');
-                            }
-                        };
-                    }
+                    awaitingHaramTransition = true;
+                    setAllSceneHudButtons(false);
+                    setSkipState(true);
                     if (ctx.hint) ctx.hint.textContent = "Final Ziarat complete. Proceed to Haram.";
                 }
             });
@@ -261,7 +347,7 @@ function onKeyDown(e) {
     if (e.code === "KeyD") moveRight = true;
 
     if (e.code === "Space") {
-        togglePauseTriggerMedia(ctx);
+        togglePause();
         return;
     }
 
@@ -329,42 +415,128 @@ function tick(t) {
 }
 
 // ─── UI Binding ──────────────────────────────────────────────────────────────
-function updateHUDButtons() {
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const sceneBtn = document.getElementById("sceneNextSceneBtn");
-    if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.classList.remove("hudBtnDisabled");
+function bindUI() {
+    const controlsArea = document.querySelector(".sceneVideoControls");
+    if (controlsArea) {
+        controlsArea.onclick = (e) => {
+            const btn = e.target.closest("[data-action]");
+            if (!btn) return;
+
+            const action = btn.getAttribute("data-action");
+
+            if (awaitingHaramTransition && action !== "sceneNextScene") return;
+
+            if (finalZiaratMode && !awaitingHaramTransition) {
+                if (!["scenePlay", "scenePause", "sceneRewind"].includes(action)) return;
+            }
+
+            switch (action) {
+                case "scenePlay":
+                    if (finalZiaratMode && !awaitingHaramTransition) {
+                        handleFinalZiaratPlayClick();
+                        return;
+                    }
+                    startSequence();
+                    break;
+                case "sceneRewind":
+                    if (finalZiaratMode && !awaitingHaramTransition && finalZiaratAwaitingPlay) {
+                        if (ctx?.videoEl && ctx?.audioEl) {
+                            ctx.videoEl.pause();
+                            ctx.audioEl.pause();
+                            ctx.videoEl.currentTime = 0;
+                            ctx.audioEl.currentTime = 0;
+                        }
+                        return;
+                    }
+                    if (finalZiaratMode && !awaitingHaramTransition) {
+                        if (ctx?.videoEl && ctx?.audioEl) {
+                            ctx.videoEl.currentTime = 0;
+                            ctx.audioEl.currentTime = 0;
+                        }
+                        return;
+                    }
+                    rewind();
+                    break;
+                case "scenePause":
+                    if (finalZiaratMode && !awaitingHaramTransition && finalZiaratAwaitingPlay) {
+                        return;
+                    }
+                    if (finalZiaratMode && !awaitingHaramTransition) {
+                        if (!ctx?.videoEl || !ctx?.audioEl) return;
+                        const v = ctx.videoEl;
+                        const a = ctx.audioEl;
+                        if (v.paused || a.paused) {
+                            finalZiaratPlaying = true;
+                            setBtnState("scenePlay", false);
+                            Promise.all([v.play(), a.play()]).catch(() => { });
+                        } else {
+                            v.pause();
+                            a.pause();
+                            finalZiaratPlaying = false;
+                            // Allow user to press PLAY again to resume/restart.
+                            setBtnState("scenePlay", true);
+                        }
+                        return;
+                    }
+                    togglePause();
+                    break;
+                case "scenePrevStep":
+                    prevStep();
+                    break;
+                case "sceneNextStep":
+                    e.stopPropagation();
+                    if (awaitingHaramTransition) return;
+                    {
+                        const curIdx = getCurrentIndex();
+                        if (curIdx === points.length - 1 && characterState === "START") {
+                            startWalkingSequence();
+                        } else {
+                            nextStep();
+                        }
+                    }
+                    break;
+                case "sceneNextScene":
+                    e.stopPropagation();
+                    if (awaitingHaramTransition) {
+                        stopTriggerMedia(ctx);
+                        awaitingHaramTransition = false;
+                        if (window.sceneRouter?.enterScene) {
+                            window.sceneRouter.enterScene("umrah_haram");
+                        }
+                        return;
+                    }
+                    onNextSceneClick();
+                    break;
+            }
+        };
     }
-    if (sceneBtn) sceneBtn.style.display = "none";
 }
 
-function goNextPoint() {
-    if (activePointIdx < points.length - 1) {
-        activePointIdx++;
-        const item = points[activePointIdx];
-        playTriggerMedia(ctx, item);
-        updateHUDButtons();
-    } else {
-        // Final video "Next" button clicked
-        stopTriggerMedia(ctx);
-        characterState = "WALKING";
+function startWalkingSequence() {
+    stopTriggerMedia(ctx);
+    characterState = "WALKING";
 
-        // Keep particle hidden while Imam walks; it will appear in updateCharacter once he arrives
-        if (triggerMesh) {
-            triggerMesh.visible = false;
-        }
-
-        if (mixer && characterModel?.animations) {
-            mixer.stopAllAction();
-            const walkClip = characterModel.animations.find(a => a.name.toLowerCase().includes("walk"));
-            if (walkClip) mixer.clipAction(walkClip).play();
-        }
-        if (ctx.hint) ctx.hint.textContent = "Moving to Jamarat...";
+    if (triggerMesh) {
+        triggerMesh.visible = false;
     }
+
+    if (mixer && characterModel?.animations) {
+        mixer.stopAllAction();
+        const walkClip = characterModel.animations.find(a => a.name.toLowerCase().includes("walk"));
+        if (walkClip) mixer.clipAction(walkClip).play();
+    }
+    if (ctx.hint) ctx.hint.textContent = "Moving to Jamarat...";
 }
 
-// ─── Rami Interaction UI ──────────────────────────────────────────────────
+function onNextSceneClick() {
+    if (!completed) {
+        console.warn("[Mina Rami] Cannot proceed: Playlist not finished");
+        return;
+    }
+    stopTriggerMedia(ctx);
+    if (window.sceneRouter) window.sceneRouter.exitScene();
+}
+
 // ─── Rami Interaction UI ──────────────────────────────────────────────────
 function showRamiUI() {
     characterState = "RAMI_STARTED";
@@ -555,37 +727,17 @@ function throwStone() {
     audio.play().catch(() => { });
 }
 
-function bindUI() {
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const restartBtn = document.getElementById("sceneVideoRestart");
-    const pauseBtn = document.getElementById("sceneVideoPause");
-
-    if (nextBtn) nextBtn.onclick = (e) => { e.stopPropagation(); goNextPoint(); };
-    if (restartBtn) restartBtn.onclick = (e) => { e.stopPropagation(); if (points[activePointIdx]) restartTriggerMedia(ctx, points[activePointIdx]); };
-    if (pauseBtn) pauseBtn.onclick = (e) => { e.stopPropagation(); togglePauseTriggerMedia(ctx); };
-
-    updateHUDButtons();
-}
-
 // ─── Enter / Exit ────────────────────────────────────────────────────────────
 export async function enter(c) {
     ctx = c;
     const { canvas, basePath } = ctx;
     if (!canvas) return;
 
-    // ✅ HUD Standardization: Reset to neutral state on entry
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const sceneBtn = document.getElementById("sceneNextSceneBtn");
-    if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.classList.remove("hudBtnDisabled");
-        nextBtn.style.display = "block";
-    }
-    if (sceneBtn) {
-        sceneBtn.disabled = true;
-        sceneBtn.classList.add("hudBtnDisabled");
-        sceneBtn.style.display = "block";
-    }
+    completed = false;
+    awaitingHaramTransition = false;
+    finalZiaratMode = false;
+    finalZiaratAwaitingPlay = false;
+    finalZiaratPlaying = false;
 
     let cfg = {};
     try {
@@ -594,7 +746,6 @@ export async function enter(c) {
     } catch (_) { }
 
     points = cfg?.points || [];
-    activePointIdx = 0;
 
     const camStart = cfg?.cameraStart || [0, 1.8, 12];
     MIN_GROUND_Y = cfg?.groundY || 0;
@@ -662,19 +813,26 @@ export async function enter(c) {
 
     // Load Env
     const envUrl = makeUrl(basePath, cfg?.model?.path || "media/models/rami_placeholder.glb");
-    loader.load(envUrl, (gltf) => {
-        envModel = gltf.scene;
-        envModel.scale.setScalar(cfg?.model?.scale || 1);
-        const p = cfg?.model?.position || [0, 0, 0];
-        envModel.position.set(p[0], p[1], p[2]);
-        scene.add(envModel);
-    }, undefined, (err) => console.warn("Rami Env Model missing:", err));
+    const envPromise = new Promise((resolve) => {
+        loader.load(envUrl, (gltf) => {
+            envModel = gltf.scene;
+            envModel.scale.setScalar(cfg?.model?.scale || 1);
+            const p = cfg?.model?.position || [0, 0, 0];
+            envModel.position.set(p[0], p[1], p[2]);
+            scene.add(envModel);
+            resolve(true);
+        }, undefined, (err) => {
+            console.warn("Rami Env Model missing:", err);
+            resolve(false);
+        });
+    });
 
     // Load Character
     const charCfg = cfg?.character;
-    if (charCfg?.path) {
+    const charPromise = charCfg?.path ? new Promise((resolve) => {
         loader.load(makeUrl(basePath, charCfg.path), (gltf) => {
             characterModel = gltf.scene;
+            characterModel.visible = true;
             const baseScale = charCfg.scale || 1.1;
             characterModel.scale.setScalar(baseScale * 3.3);
             scene.add(characterModel);
@@ -686,14 +844,22 @@ export async function enter(c) {
                 idleAction = mixer.clipAction(idleClip);
                 idleAction.play();
             }
+            resolve(true);
+        }, undefined, (err) => {
+            console.warn("Rami Character Model missing:", err);
+            resolve(false);
         });
-    }
+    }) : Promise.resolve(false);
+
+    // Keep global loading overlay until key assets finish loading
+    await Promise.all([envPromise, charPromise]);
 
     triggered = false;
     document.addEventListener("keydown", onKeyDown);
     document.addEventListener("keyup", onKeyUp);
     window.addEventListener("resize", onResize);
 
+    bindUI();
     if (ctx.hint) ctx.hint.textContent = "Mina Rami Scene · Walk to the light";
 
     mobileControls = new MobileControls();
@@ -721,6 +887,9 @@ export function exit() {
     }
 
     stopTriggerMedia(ctx);
+    finalZiaratMode = false;
+    finalZiaratAwaitingPlay = false;
+    finalZiaratPlaying = false;
     if (renderer) renderer.dispose();
     scene = null; camera = null; renderer = null; ctx = null;
 }

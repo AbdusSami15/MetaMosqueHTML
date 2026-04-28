@@ -11,13 +11,16 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import { loadTawaf, isInsideTawafPoint, getTawafPointCenter } from "./tawaf.js";
 import {
   stopTriggerMedia,
-  playTriggerMedia,
-  restartTriggerMedia,
-  togglePauseTriggerMedia,
+  initMediaSequence,
+  startSequence,
+  nextStep as mediaNextStep,
+  prevStep,
+  rewind,
+  togglePause,
 } from "./media.js";
 import { MobileControls } from "./mobileControls.js";
 
-const MOVE_SPEED = 0.15;
+const MOVE_SPEED = 5.0;
 
 let renderer, scene, camera, controls;
 let mobileControls = null;
@@ -27,6 +30,8 @@ let tawafMediaLocked = false;
 let tawafComplete = false;
 
 let movementLocked = false;
+let movementLimit = null;
+let kaabaLimit = null;
 
 let velocity = new THREE.Vector3();
 let dir = new THREE.Vector3();
@@ -46,6 +51,23 @@ let CAMERA_START_Y = null;
 let tawafBeam = null;
 let tawafGlow = null;
 let tawafRing = null;
+let directionArrow = null;
+let directionArrowRoot = null;
+let guidanceWaypoint = new THREE.Vector3();
+let guidanceWaypointReady = false;
+const GUIDANCE_REACH_DIST = 2.2;
+let guidanceWaypointIdx = 0;
+let arrowAnimT = 0;
+let arrowAnimAxis = new THREE.Vector3(0, 0, 1);
+let arrowAnimBasePos = new THREE.Vector3();
+const HARAM_GUIDE_POINTS = [
+  new THREE.Vector3(-13.1291, 1.8, 2.7100),
+  new THREE.Vector3(-11.0447, 1.8, 23.5323),
+  new THREE.Vector3(4.3141, 1.8, 28.2917),
+  new THREE.Vector3(17.8026, 1.8, 9.7437),
+  new THREE.Vector3(19.2548, 1.8, -10.8294),
+  new THREE.Vector3(-7.5659, 1.8, -14.0907),
+];
 
 // Demo character
 // Demo character (3D Model)
@@ -126,19 +148,11 @@ function normalizeBtnText(t) {
 }
 
 function autoFindButtons() {
-  const buttons = Array.from(document.querySelectorAll("button, .btn, [role='button']"));
-  const out = { nextBtn: null, restartBtn: null, pauseBtn: null, closeBtn: null };
-
-  for (const b of buttons) {
-    const txt = normalizeBtnText(b.innerText || b.textContent);
-    if (!txt) continue;
-
-    if (!out.nextBtn && txt === "NEXT") out.nextBtn = b;
-    else if (!out.restartBtn && txt === "RESTART") out.restartBtn = b;
-    else if (!out.pauseBtn && txt === "PAUSE") out.pauseBtn = b;
-    else if (!out.closeBtn && txt === "CLOSE") out.closeBtn = b;
-  }
-  return out;
+  // We now use data-action attributes exclusively for the new 6-button set.
+  // This helper is kept for the SCENE button if it still relies on ID-based lookup in some places.
+  return {
+    sceneBtn: document.getElementById("sceneNextSceneBtn")
+  };
 }
 
 async function loadSceneConfig(basePath) {
@@ -397,6 +411,90 @@ function updateTawafMarker() {
   tawafRing.position.set(center.x, groundY + 0.03, center.z);
 }
 
+function createDirectionArrow() {
+  const loader = new GLTFLoader();
+  const arrowUrl = resolveUrl(ctx?.basePath || "", "media/models/3D Arrow.glb");
+  loader.load(
+    arrowUrl,
+    (gltf) => {
+      directionArrowRoot = gltf.scene;
+      directionArrowRoot.visible = true;
+      directionArrowRoot.scale.setScalar(0.8);
+      directionArrowRoot.rotation.set(Math.PI / 2, 0, 0);
+      arrowAnimBasePos.copy(directionArrowRoot.position);
+      const bbox = new THREE.Box3().setFromObject(directionArrowRoot);
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+      if (size.x >= size.y && size.x >= size.z) arrowAnimAxis.set(1, 0, 0);
+      else if (size.y >= size.x && size.y >= size.z) arrowAnimAxis.set(0, 1, 0);
+      else arrowAnimAxis.set(0, 0, 1);
+      directionArrowRoot.traverse((child) => {
+        if (!child.isMesh || !child.material) return;
+        const mats = Array.isArray(child.material) ? child.material : [child.material];
+        for (const m of mats) {
+          if ("color" in m) m.color = new THREE.Color(0x0b8f3a);
+          if ("emissive" in m) m.emissive = new THREE.Color(0x0a5c2a);
+          if ("emissiveIntensity" in m) m.emissiveIntensity = 1.8;
+        }
+      });
+      directionArrow = new THREE.Group();
+      directionArrow.visible = false;
+      directionArrow.add(directionArrowRoot);
+      scene.add(directionArrow);
+    },
+    undefined,
+    () => {
+      directionArrowRoot = null;
+      directionArrow = null;
+    }
+  );
+}
+
+function updateDirectionArrow() {
+  if (!directionArrow || !camera || !demoCharacter || tawafComplete) {
+    if (directionArrow) directionArrow.visible = false;
+    guidanceWaypointReady = false;
+    return;
+  }
+
+  // Start custom static route only after first NEXT click.
+  if (activeTawafIndex < 1 || HARAM_GUIDE_POINTS.length === 0) {
+    directionArrow.visible = false;
+    guidanceWaypointReady = false;
+    guidanceWaypointIdx = 0;
+    return;
+  }
+
+  if (!guidanceWaypointReady) {
+    guidanceWaypoint.copy(HARAM_GUIDE_POINTS[0]);
+    guidanceWaypoint.y = groundY + 1.1;
+    guidanceWaypointIdx = 0;
+    guidanceWaypointReady = true;
+  }
+
+  const dx = camera.position.x - guidanceWaypoint.x;
+  const dz = camera.position.z - guidanceWaypoint.z;
+  if (dx * dx + dz * dz <= GUIDANCE_REACH_DIST * GUIDANCE_REACH_DIST) {
+    if (guidanceWaypointIdx < HARAM_GUIDE_POINTS.length - 1) {
+      guidanceWaypointIdx += 1;
+      guidanceWaypoint.copy(HARAM_GUIDE_POINTS[guidanceWaypointIdx]);
+      guidanceWaypoint.y = groundY + 1.1;
+    }
+  }
+
+  const lookIdx = Math.min(guidanceWaypointIdx + 1, HARAM_GUIDE_POINTS.length - 1);
+  const lookTarget = HARAM_GUIDE_POINTS[lookIdx].clone();
+  lookTarget.y = groundY + 1.1;
+  if (lookIdx === guidanceWaypointIdx) lookTarget.z += 0.01;
+
+  directionArrow.position.copy(guidanceWaypoint);
+  const dxLook = lookTarget.x - guidanceWaypoint.x;
+  const dzLook = lookTarget.z - guidanceWaypoint.z;
+  const yaw = Math.atan2(dxLook, dzLook) - Math.PI / 2;
+  directionArrow.rotation.set(0, yaw, 0);
+  directionArrow.visible = true;
+}
+
 function beginStep(point) {
   tawafMediaLocked = true;
   lockMovement();
@@ -416,10 +514,14 @@ function beginStep(point) {
 
   if (point.video || point.audio) {
     playCharacterAction("talk");
-    playTriggerMedia(ctx, point, {
+    initMediaSequence(ctx, point, {
+      isNavLocked: true,
+      isFinalPoint: isLastPoint,
       onEnded: () => {
         if (ctx?.hint) ctx.hint.textContent = `${point.title} (Done)`;
         playCharacterAction("idle");
+        // ✅ Mark as completed when last point's media is done
+        if (isLastPoint) tawafComplete = true;
       },
     });
   } else {
@@ -432,31 +534,26 @@ function beginStep(point) {
 
 
 function setNextSceneButton() {
-  const nextBtn = document.getElementById("sceneVideoNext");
   const sceneBtn = document.getElementById("sceneNextSceneBtn");
 
-  console.log("[Haram] setNextSceneButton called:", { nextBtn: !!nextBtn, sceneBtn: !!sceneBtn });
+  console.log("[Haram] setNextSceneButton called:", { sceneBtn: !!sceneBtn });
 
-  if (!nextBtn || !sceneBtn) {
-    console.warn("[Haram] Button elements not found!");
+  if (!sceneBtn) {
+    console.warn("[Haram] Scene button element not found!");
     return;
   }
-
-  // Disable next button
-  nextBtn.disabled = true;
-  nextBtn.setAttribute("aria-disabled", "true");
-  nextBtn.classList.add("hudBtnDisabled");
 
   // Enable scene button
   sceneBtn.disabled = false;
   sceneBtn.setAttribute("aria-disabled", "false");
   sceneBtn.classList.remove("hudBtnDisabled");
 
-  console.log("[Haram] Buttons updated successfully");
+  console.log("[Haram] Scene button updated successfully");
 }
 
 function advanceTawaf() {
   if (tawafComplete || tawafPoints.length === 0) return;
+  if (activeTawafIndex >= tawafPoints.length - 1) return;
 
   // Function to play specific audio for the Yameni to Hajr-e-Aswad transition
   if (activeTawafIndex === 1) {
@@ -637,6 +734,17 @@ function onKeyDown(e) {
     return;
   }
 
+  if (e.code === "KeyC" && camera) {
+    const p = camera.position;
+    const posStr = `[${p.x.toFixed(4)}, ${p.y.toFixed(4)}, ${p.z.toFixed(4)}]`;
+    console.log("%c[Haram Capture Position]:", "color:#00ff66;font-weight:bold;", posStr);
+    if (ctx?.hint) ctx.hint.textContent = `Captured: ${posStr}`;
+    if (navigator.clipboard && window.isSecureContext) {
+      navigator.clipboard.writeText(posStr).catch(() => { });
+    }
+    return;
+  }
+
   if (movementLocked) return;
 
   if (e.code === "KeyW") moveForward = true;
@@ -656,6 +764,7 @@ function tick() {
   requestAnimationFrame(tick);
 
   const dt = clock.getDelta();
+  arrowAnimT += dt;
 
   if (demoCharacterMixer) {
     demoCharacterMixer.update(dt);
@@ -673,13 +782,20 @@ function tick() {
     tawafRing.material.opacity = 0.16 + 0.08 * (0.5 + 0.5 * Math.sin(t * 2.0));
   }
 
+  // Subtle forward/back arrow motion for better guidance readability.
+  if (directionArrowRoot) {
+    directionArrowRoot.position.copy(arrowAnimBasePos).addScaledVector(arrowAnimAxis, Math.sin(arrowAnimT * 6.2) * 0.24);
+  }
+
+  updateDirectionArrow();
+
   // ✅ Unified Movement Logic (Keyboard + Mobile)
   if (!movementLocked) {
     // 1. Reset velocity for this frame
     velocity.set(0, 0, 0);
 
-    // 2. Keyboard Input (only if PointerLock is active)
-    if (controls?.isLocked) {
+    // 2. Keyboard input (available immediately; does not require pointer lock)
+    if (controls) {
       camera.getWorldDirection(dir);
       dir.y = 0;
       dir.normalize();
@@ -729,7 +845,35 @@ function tick() {
       if (velocity.lengthSq() > 1) velocity.normalize();
 
       // Apply Move Speed
-      camera.position.addScaledVector(velocity, MOVE_SPEED);
+      camera.position.addScaledVector(velocity, MOVE_SPEED * dt);
+    }
+
+    // Apply Circular Movement Restriction
+    if (movementLimit) {
+      const { center, radius } = movementLimit;
+      const dx = camera.position.x - center[0];
+      const dz = camera.position.z - center[1];
+      const distSq = dx * dx + dz * dz;
+      if (distSq > radius * radius) {
+        const dist = Math.sqrt(distSq);
+        const scale = radius / dist;
+        camera.position.x = center[0] + dx * scale;
+        camera.position.z = center[1] + dz * scale;
+      }
+    }
+
+    // Apply Circular Kaaba Collider (Inner)
+    if (kaabaLimit) {
+      const { center, radius } = kaabaLimit;
+      const dx = camera.position.x - center[0];
+      const dz = camera.position.z - center[1];
+      const distSq = dx * dx + dz * dz;
+      if (distSq < radius * radius) {
+        const dist = Math.sqrt(distSq);
+        const scale = radius / Math.max(dist, 0.0001);
+        camera.position.x = center[0] + dx * scale;
+        camera.position.z = center[1] + dz * scale;
+      }
     }
   }
 
@@ -952,24 +1096,41 @@ export async function enter(c) {
   }
   hideDuaPanel();
 
-  // ✅ NEXT button: always advance (same as before) + non-blocking dua once
-  if (ctx.nextBtn) {
-    ctx.nextBtn.onclick = () => {
-      maybeShowDuaNonBlocking();
-      advanceTawaf();
+  // ✅ New Stateful Button Handlers
+  const controlsArea = document.querySelector('.sceneVideoControls');
+  if (controlsArea) {
+    controlsArea.onclick = (e) => {
+      const btn = e.target.closest('[data-action]');
+      if (!btn) return;
+
+      const action = btn.getAttribute('data-action');
+      console.log("[Haram] Control clicked:", action);
+
+      switch (action) {
+        case "scenePlay":
+          startSequence();
+          break;
+        case "sceneRewind":
+          rewind();
+          break;
+        case "scenePause":
+          togglePause();
+          break;
+        case "scenePrevStep":
+          prevStep();
+          break;
+        case "sceneNextStep":
+          // ✅ Advance ritual (moves character, stops current media)
+          maybeShowDuaNonBlocking();
+          advanceTawaf();
+          break;
+        case "sceneNextScene":
+          if (window.sceneRouter) window.sceneRouter.exitScene();
+          else window.location.reload();
+          break;
+      }
     };
   }
-
-  if (ctx.restartBtn) {
-    ctx.restartBtn.onclick = () => {
-      if (tawafComplete || tawafPoints.length === 0) return;
-      lockMovement();
-      const point = tawafPoints[activeTawafIndex];
-      restartTriggerMedia(ctx, point);
-    };
-  }
-
-  if (ctx.pauseBtn) ctx.pauseBtn.onclick = () => togglePauseTriggerMedia(ctx);
 
   setNextVisible();
 
@@ -977,6 +1138,8 @@ export async function enter(c) {
 
   const sceneConfig = await loadSceneConfig(basePath);
   groundY = sceneConfig?.groundY ?? 0;
+  movementLimit = sceneConfig?.movementLimit || null;
+  kaabaLimit = sceneConfig?.kaabaLimit || null;
 
   const camStart = sceneConfig?.cameraStart;
   const startX = Array.isArray(camStart) && camStart.length >= 1 ? camStart[0] : 0;
@@ -1045,6 +1208,7 @@ export async function enter(c) {
   scene.add(fill);
 
   createTawafBeam();
+  createDirectionArrow();
   updateTawafMarker();
 
   mobileControls = new MobileControls();
@@ -1138,6 +1302,11 @@ export function exit() {
   tawafBeam = null;
   tawafGlow = null;
   tawafRing = null;
+  directionArrowRoot = null;
+  directionArrow = null;
+  guidanceWaypointReady = false;
+  guidanceWaypointIdx = 0;
+  arrowAnimT = 0;
   demoCharacter = null;
   demoCharacterWalkTarget = null;
   demoCharacterWalking = false;

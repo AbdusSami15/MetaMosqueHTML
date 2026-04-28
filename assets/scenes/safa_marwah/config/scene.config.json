@@ -2,15 +2,31 @@
   "groundY": 0,
   "minGroundY": 0,
   "eyeHeight": 2,
-
-  "cameraStart": [-119.203, 9, -141.535],
-  "cameraYawPitch": [-7.123, 0.106],
-
+  "cameraStart": [
+    -119.203,
+    9,
+    -141.535
+  ],
+  "cameraYawPitch": [
+    3.1415,
+    0.106
+  ],
   "model": {
     "path": "media/models/safa_marwah.glb",
     "scale": 1,
-    "position": [0, 0, 0],
-    "rotation": [0, 0, 0],
+    "position": [
+      0,
+      0,
+      0
+    ],
+    "rotation": [
+      0,
+      0,
+      0
+    ],
     "floorOffset": 8
+  },
+  "pathLimit": {
+    "width": 8
   }
 }

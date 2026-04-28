@@ -5,10 +5,14 @@ import * as THREE from "three";
 import { PointerLockControls } from "three/examples/jsm/controls/PointerLockControls.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import {
-    playTriggerMedia,
     stopTriggerMedia,
-    restartTriggerMedia,
-    togglePauseTriggerMedia
+    initMediaSequence,
+    startSequence,
+    nextStep,
+    prevStep,
+    rewind,
+    togglePause,
+    setVideoTitle,
 } from "./media.js";
 import { MobileControls } from "./mobileControls.js";
 
@@ -41,6 +45,7 @@ const _tmpV = new THREE.Vector3();
 let points = [];
 let activePointIdx = 0;
 let triggered = false;
+let completed = false;
 let triggerMesh = null;
 const TRIGGER_POS = new THREE.Vector3(0, 0, 18.0);
 const CHARACTER_POS = new THREE.Vector3(0, 0, 18.0); // Match Mina's latest adjust
@@ -89,8 +94,8 @@ function step(dt) {
     if (!camera) return;
     velocity.set(0, 0, 0);
 
-    // Keyboard
-    if (controls && controls.isLocked) {
+    // Keyboard (available immediately; does not require pointer lock)
+    if (controls) {
         camera.getWorldDirection(_dir);
         _dir.y = 0; _dir.normalize();
         _right.crossVectors(_dir, _up).normalize();
@@ -151,12 +156,17 @@ function checkTrigger() {
         if (triggerMesh) triggerMesh.visible = false;
         if (controls) controls.unlock();
 
-        // Start first media point
+        // Start full media sequence
         if (points.length > 0) {
-            playTriggerMedia(ctx, points[0]);
+            setVideoTitle("ARAFAT");
+            initMediaSequence(ctx, points, {
+                isNavLocked: false,
+                onEnded: () => {
+                    completed = true; 
+                }
+            });
         }
 
-        bindUI(); // Show HUD buttons now
         if (ctx.hint) ctx.hint.textContent = "Media started · Use HUD to navigate";
     }
 }
@@ -169,7 +179,7 @@ function onKeyDown(e) {
     if (e.code === "KeyD") moveRight = true;
 
     if (e.code === "Space") {
-        togglePauseTriggerMedia(ctx);
+        togglePause();
         return;
     }
 }
@@ -211,51 +221,47 @@ function tick(t) {
 }
 
 // ─── UI Binding ──────────────────────────────────────────────────────────────
-function updateHUDButtons() {
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const sceneBtn = document.getElementById("sceneNextSceneBtn");
-
-    // NEXT button is enabled if more points exist
-    const hasNext = activePointIdx < points.length - 1;
-    if (nextBtn) {
-        nextBtn.disabled = !hasNext;
-        if (!hasNext) nextBtn.classList.add("hudBtnDisabled");
-        else nextBtn.classList.remove("hudBtnDisabled");
-    }
-
-    // SCENE button is enabled only after the final media is started
-    const isLast = activePointIdx === points.length - 1;
-    if (sceneBtn) {
-        sceneBtn.disabled = !isLast;
-        if (!isLast) sceneBtn.classList.add("hudBtnDisabled");
-        else sceneBtn.classList.remove("hudBtnDisabled");
-    }
-}
-
-function goNextPoint() {
-    if (activePointIdx < points.length - 1) {
-        activePointIdx++;
-        const item = points[activePointIdx];
-        playTriggerMedia(ctx, item);
-        updateHUDButtons();
-    }
-}
-
 function bindUI() {
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const restartBtn = document.getElementById("sceneVideoRestart");
-    const pauseBtn = document.getElementById("sceneVideoPause");
-    const sceneBtn = document.getElementById("sceneNextSceneBtn");
+    const controlsArea = document.querySelector('.sceneVideoControls');
+    if (controlsArea) {
+        controlsArea.onclick = (e) => {
+            const btn = e.target.closest('[data-action]');
+            if (!btn) return;
 
-    if (nextBtn) nextBtn.onclick = (e) => { e.stopPropagation(); goNextPoint(); };
-    if (restartBtn) restartBtn.onclick = (e) => { e.stopPropagation(); if (points[activePointIdx]) restartTriggerMedia(ctx, points[activePointIdx]); };
-    if (pauseBtn) pauseBtn.onclick = (e) => { e.stopPropagation(); togglePauseTriggerMedia(ctx); };
-    if (sceneBtn) sceneBtn.onclick = (e) => { e.stopPropagation(); onNextSceneClick(); };
+            const action = btn.getAttribute('data-action');
+            console.log("[Arafat] Control clicked:", action);
 
-    updateHUDButtons();
+            switch (action) {
+                case "scenePlay":
+                    startSequence();
+                    break;
+                case "sceneRewind":
+                    rewind();
+                    break;
+                case "scenePause":
+                    togglePause();
+                    break;
+                case "scenePrevStep":
+                    prevStep();
+                    break;
+                case "sceneNextStep":
+                    nextStep();
+                    break;
+                case "sceneNextScene":
+                    e.stopPropagation();
+                    onNextSceneClick();
+                    break;
+            }
+        };
+    }
 }
 
 function onNextSceneClick() {
+    if (!completed) {
+        console.warn("[Arafat] Cannot proceed: Playlist not finished");
+        return;
+    }
+
     stopTriggerMedia(ctx);
     // Transition to Muzdalifah scene
     window.dispatchEvent(new CustomEvent("metamosque:goToScene", {
@@ -269,19 +275,7 @@ export async function enter(c) {
     const { canvas, basePath } = ctx;
     if (!canvas) return;
 
-    // ✅ HUD Standardization: Reset to neutral state on entry
-    const nextBtn = document.getElementById("sceneVideoNext");
-    const sceneBtn = document.getElementById("sceneNextSceneBtn");
-    if (nextBtn) {
-        nextBtn.disabled = false;
-        nextBtn.classList.remove("hudBtnDisabled");
-        nextBtn.style.display = "block";
-    }
-    if (sceneBtn) {
-        sceneBtn.disabled = true;
-        sceneBtn.classList.add("hudBtnDisabled");
-        sceneBtn.style.display = "block";
-    }
+    // ✅ HUD Standardization: Reset handled via initMediaSequence later
 
     let cfg = {};
     try {
@@ -365,17 +359,23 @@ export async function enter(c) {
 
     // Load Env
     const envUrl = makeUrl(basePath, cfg?.model?.path || "media/models/arafat_placeholder.glb");
-    loader.load(envUrl, (gltf) => {
-        envModel = gltf.scene;
-        envModel.scale.setScalar(cfg?.model?.scale || 1);
-        const p = cfg?.model?.position || [0, 0, 0];
-        envModel.position.set(p[0], p[1], p[2]);
-        scene.add(envModel);
+    const envPromise = new Promise((resolve) => {
+        loader.load(envUrl, (gltf) => {
+            envModel = gltf.scene;
+            envModel.scale.setScalar(cfg?.model?.scale || 1);
+            const p = cfg?.model?.position || [0, 0, 0];
+            envModel.position.set(p[0], p[1], p[2]);
+            scene.add(envModel);
+            resolve(true);
+        }, undefined, (err) => {
+            console.warn("[Arafat] Env Model missing:", err);
+            resolve(false);
+        });
     });
 
     // Load Character
     const charCfg = cfg?.character;
-    if (charCfg?.path) {
+    const charPromise = charCfg?.path ? new Promise((resolve) => {
         loader.load(makeUrl(basePath, charCfg.path), (gltf) => {
             characterModel = gltf.scene;
 
@@ -393,8 +393,15 @@ export async function enter(c) {
                 idleAction = mixer.clipAction(clip);
                 idleAction.play();
             }
+            resolve(true);
+        }, undefined, (err) => {
+            console.warn("[Arafat] Character Model missing:", err);
+            resolve(false);
         });
-    }
+    }) : Promise.resolve(false);
+
+    // Keep global loading overlay until key assets finish loading
+    await Promise.all([envPromise, charPromise]);
 
     // No auto-play here anymore. Handled by checkTrigger()
     triggered = false;

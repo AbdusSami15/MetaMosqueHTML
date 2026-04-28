@@ -527,3 +527,23 @@ async function handleAuthSubmit(type) {
   });
 })();
 
+// --- Orientation Check Logic ---
+function updateOrientation() {
+  const overlay = document.getElementById("orientationOverlay");
+  if (!overlay) return;
+
+  // Check for portrait on mobile/tablet (max-width 1024px)
+  const isPortrait = window.innerHeight > window.innerWidth;
+  const isMobile = window.innerWidth <= 1024;
+
+  if (isMobile && isPortrait) {
+    overlay.classList.remove("hidden");
+  } else {
+    overlay.classList.add("hidden");
+  }
+}
+
+window.addEventListener("resize", updateOrientation);
+window.addEventListener("orientationchange", updateOrientation);
+updateOrientation();
+

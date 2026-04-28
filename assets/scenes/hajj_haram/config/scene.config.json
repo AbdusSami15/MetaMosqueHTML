@@ -6,5 +6,13 @@
     "scale": 1,
     "position": [0, 0, 0],
     "rotation": [0, 0, 0]
+  },
+  "movementLimit": {
+    "center": [0, 0],
+    "radius": 45
+  },
+  "kaabaLimit": {
+    "center": [4.5043, 3.7648],
+    "radius": 13
   }
 }

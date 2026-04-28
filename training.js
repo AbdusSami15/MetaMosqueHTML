@@ -14,12 +14,13 @@ const TRAINING_CONFIG = {
   playlist: [
     { video: "assets/media/videos/umrah/Kaba video compressed.mp4", audio: "assets/media/audio/umrah/UmrahNiyatFinal.mp3" },
     { video: "assets/media/videos/umrah/Ahram.mp4", audio: "assets/media/audio/umrah/Ahram.mp3" },
-    { video: "assets/media/videos/umrah/Talbiyah.mp4", audio: "assets/media/audio/umrah/LabbaikBg.mp3" },
+    { video: "assets/media/videos/umrah/Ahram.mp4", audio: "assets/media/audio/umrah/LabbaikBg.mp3" },
   ],
 };
 
 // Training 2 (After Safa Marwah) - Simple finish screen
 const TRAINING_CONFIG_2 = {
+  isConclusion: true,
   backgroundImage: "assets/bg/training_room_bg.jpg",
   backgroundFallbackColor: "#2a2520",
   silhouetteImage: "assets/ui/training_silhouette.png",
@@ -57,6 +58,8 @@ let currentIndex = 0;
 let isPlaying = false;
 
 let allFinished = false;
+let isSequencePlaying = false;
+let maxIndexReached = 0;
 let nextSceneName = "";
 let nextSceneId = "";
 let pendingGo = false;
@@ -161,6 +164,39 @@ function setSkipLabel(text) {
   if (typeof text === "string" && text.trim().length) btn.textContent = text;
 }
 
+function setPlayButtonState(enabled) {
+  const btn = document.querySelector('[data-action="trainPlay"]');
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.setAttribute("aria-disabled", enabled ? "false" : "true");
+  btn.style.opacity = enabled ? "1" : "0.45";
+  btn.style.pointerEvents = enabled ? "auto" : "none";
+  if (enabled) btn.classList.remove("hudBtnDisabled");
+  else btn.classList.add("hudBtnDisabled");
+}
+
+function setPrevStepState(enabled) {
+  const btn = document.querySelector('[data-action="trainPrevStep"]');
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.setAttribute("aria-disabled", enabled ? "false" : "true");
+  btn.style.opacity = enabled ? "1" : "0.45";
+  btn.style.pointerEvents = enabled ? "auto" : "none";
+  if (enabled) btn.classList.remove("hudBtnDisabled");
+  else btn.classList.add("hudBtnDisabled");
+}
+
+function setNextStepState(enabled) {
+  const btn = document.querySelector('[data-action="trainNextStep"]');
+  if (!btn) return;
+  btn.disabled = !enabled;
+  btn.setAttribute("aria-disabled", enabled ? "false" : "true");
+  btn.style.opacity = enabled ? "1" : "0.45";
+  btn.style.pointerEvents = enabled ? "auto" : "none";
+  if (enabled) btn.classList.remove("hudBtnDisabled");
+  else btn.classList.add("hudBtnDisabled");
+}
+
 function showLoading(text) {
   if (!loadingOverlay) return;
   if (loadingText && typeof text === "string") loadingText.textContent = text;
@@ -242,6 +278,18 @@ function loadItem(index) {
   currentIndex = Math.max(0, Math.min(index, list.length - 1));
   const item = list[currentIndex];
 
+  // Update how far we've reached
+  maxIndexReached = Math.max(maxIndexReached, currentIndex);
+
+  if (activeConfig.isConclusion) {
+    setPrevStepState(false);
+    setNextStepState(false);
+  } else {
+    setPrevStepState(currentIndex > 0);
+    // Next button only ON if we are behind our furthest reached point
+    setNextStepState(currentIndex < maxIndexReached);
+  }
+
   stopBoth();
   stopNextStepAudio();
 
@@ -268,8 +316,12 @@ function loadItem(index) {
 
   forceHideTapOverlay();
 
+  const loader = document.getElementById("trainingMediaLoader");
+  if (loader) loader.classList.remove("hidden");
+
   return new Promise((resolve) => {
     if (!trainingVideo || !trainingAudio) {
+      if (loader) loader.classList.add("hidden");
       resolve({ ok: true });
       return;
     }
@@ -279,10 +331,11 @@ function loadItem(index) {
 
     function tryResolve() {
       if (!videoReady || !audioReady) return;
-      trainingVideo.removeEventListener("loadeddata", onVideoReady);
+      trainingVideo.removeEventListener("canplaythrough", onVideoReady);
       trainingVideo.removeEventListener("error", onVideoError);
       trainingAudio.removeEventListener("canplaythrough", onAudioReady);
       trainingAudio.removeEventListener("error", onAudioError);
+      if (loader) loader.classList.add("hidden");
       resolve({ ok: !loadFailed });
     }
 
@@ -298,10 +351,20 @@ function loadItem(index) {
       loadFailed = true; audioReady = true; tryResolve();
     }
 
-    trainingVideo.addEventListener("loadeddata", onVideoReady, { once: true });
-    trainingVideo.addEventListener("error", onVideoError, { once: true });
-    trainingAudio.addEventListener("canplaythrough", onAudioReady, { once: true });
-    trainingAudio.addEventListener("error", onAudioError, { once: true });
+    // Use canplaythrough for stricter sync
+    if (trainingVideo.readyState >= 3) videoReady = true;
+    else {
+      trainingVideo.addEventListener("canplaythrough", onVideoReady, { once: true });
+      trainingVideo.addEventListener("error", onVideoError, { once: true });
+    }
+
+    if (trainingAudio.readyState >= 3) audioReady = true;
+    else {
+      trainingAudio.addEventListener("canplaythrough", onAudioReady, { once: true });
+      trainingAudio.addEventListener("error", onAudioError, { once: true });
+    }
+
+    tryResolve();
   });
 }
 
@@ -317,6 +380,7 @@ function nextStep() {
 
     const nextStepSrc = activeConfig.nextStepAudio && resolveUrl(activeConfig.nextStepAudio);
     if (!nextStepSrc) {
+      allFinished = true;
       setSkipState(true);
       return;
     }
@@ -325,19 +389,23 @@ function nextStep() {
     nextStepEl.src = nextStepSrc;
     nextStepEl.currentTime = 0;
 
+    // SCENE button only enabled after this audio ends
     setSkipState(false);
 
     nextStepEl.onended = () => {
+      allFinished = true;
       setSkipState(true);
       // ✅ Character to idle when next step audio ends
       setTrainingCharacterAction('idle');
     };
     nextStepEl.onerror = () => {
+      allFinished = true;
       setSkipState(true);
       setTrainingCharacterAction('idle');
     };
 
     nextStepEl.play().catch(() => {
+      allFinished = true;
       setSkipState(true);
       setTrainingCharacterAction('idle');
     });
@@ -347,6 +415,20 @@ function nextStep() {
   loadItem(currentIndex + 1).then((result) => {
     if (result && result.ok) playBothFromStart();
   });
+}
+
+function prevStep() {
+  if (currentIndex <= 0) return;
+
+  loadItem(currentIndex - 1).then((result) => {
+    if (result && result.ok) playBothFromStart();
+  });
+}
+
+function startSequence() {
+  isSequencePlaying = true;
+  setPlayButtonState(false);
+  playBothFromStart();
 }
 
 function restartStep() {
@@ -369,9 +451,10 @@ function skipTraining() {
   // ✅ Character to idle when FINISH button clicked
   setTrainingCharacterAction('idle');
 
-  // Check if this is Training 2 (goes to main menu)
-  if (activeConfig === TRAINING_CONFIG_2) {
-    // Exit training - this shows Main Menu via metamosque:exitTraining listener
+  // Check if this is Training 2 (Conclusion) - goes to main menu
+  if (activeConfig.isConclusion) {
+    // Exit training - this shows Main Menu (homeScreen) via metamosque:exitTraining listener
+    console.log("Training: Finishing (Conclusion) -> Returning to Main Menu");
     window.dispatchEvent(new CustomEvent("metamosque:exitTraining"));
     return;
   }
@@ -392,11 +475,74 @@ document.addEventListener("click", (e) => {
   if (!btn) return;
 
   const action = btn.getAttribute("data-action");
-  if (action === "trainNext") { nextStep(); return; }
-  if (action === "trainRestart") { restartStep(); return; }
+  if (action === "trainPlay") { startSequence(); return; }
+  if (action === "trainNextStep") { nextStep(); return; }
+  if (action === "trainPrevStep") { prevStep(); return; }
+  if (action === "trainRewind") { restartStep(); return; }
   if (action === "trainPause") { togglePause(); return; }
   if (action === "trainSkip") { skipTraining(); return; }
 });
+
+const testHaramBtn = document.getElementById("testHaramBtn");
+if (testHaramBtn) {
+  testHaramBtn.onclick = () => {
+    stopBoth();
+    stopNextStepAudio();
+    const mode = PILGRIMAGE_MODE || 'umrah';
+    const sceneId = (mode === 'hajj') ? 'hajj_haram' : 'umrah_haram';
+    window.dispatchEvent(new CustomEvent("metamosque:goToScene", { detail: { sceneId } }));
+  };
+}
+
+const testSafaUmrahBtn = document.getElementById("testSafaUmrahBtn");
+if (testSafaUmrahBtn) {
+  testSafaUmrahBtn.onclick = () => {
+    stopBoth();
+    stopNextStepAudio();
+    window.PILGRIMAGE_MODE = 'umrah';
+    window.dispatchEvent(new CustomEvent("metamosque:goToScene", { detail: { sceneId: 'safa_marwah' } }));
+  };
+}
+
+const testSafaHajjBtn = document.getElementById("testSafaHajjBtn");
+if (testSafaHajjBtn) {
+  testSafaHajjBtn.onclick = () => {
+    stopBoth();
+    stopNextStepAudio();
+    window.PILGRIMAGE_MODE = 'hajj';
+    window.dispatchEvent(new CustomEvent("metamosque:goToScene", { detail: { sceneId: 'safa_marwah' } }));
+  };
+}
+
+const testMinaBtn = document.getElementById("testMinaBtn");
+if (testMinaBtn) {
+    testMinaBtn.onclick = () => {
+        stopBoth();
+        stopNextStepAudio();
+        window.PILGRIMAGE_MODE = 'hajj';
+        window.dispatchEvent(new CustomEvent("metamosque:goToScene", { detail: { sceneId: 'mina' } }));
+    };
+}
+
+const testMinaRamiBtn = document.getElementById("testMinaRamiBtn");
+if (testMinaRamiBtn) {
+    testMinaRamiBtn.onclick = () => {
+        stopBoth();
+        stopNextStepAudio();
+        window.PILGRIMAGE_MODE = "hajj";
+        window.dispatchEvent(new CustomEvent("metamosque:goToScene", { detail: { sceneId: "mina_rami" } }));
+    };
+}
+
+const testMuzdalifahBtn = document.getElementById("testMuzdalifahBtn");
+if (testMuzdalifahBtn) {
+    testMuzdalifahBtn.onclick = () => {
+        stopBoth();
+        stopNextStepAudio();
+        window.PILGRIMAGE_MODE = 'hajj';
+        window.dispatchEvent(new CustomEvent("metamosque:goToScene", { detail: { sceneId: 'muzdalifah' } }));
+    };
+}
 
 if (disclaimerOk) {
   disclaimerOk.addEventListener("click", () => {
@@ -419,7 +565,18 @@ if (trainingAudio) {
   trainingAudio.addEventListener("ended", () => {
     stopBoth();
     const isLast = currentIndex >= (activeConfig.playlist.length - 1);
-    if (isLast) allFinished = true;
+
+    // Automatically proceed to next step if sequence is playing
+    if (isSequencePlaying) {
+      setTimeout(() => {
+        nextStep();
+      }, 500); // Small gap between steps
+    } else {
+      if (isLast) {
+        allFinished = true;
+        if (activeConfig.isConclusion) setSkipState(true);
+      }
+    }
 
     // ✅ Character to idle when audio ends
     setTrainingCharacterAction('idle');
@@ -449,10 +606,22 @@ window.addEventListener("metamosque:startTraining", async (e) => {
   // Select configuration
   activeConfig = (trainingId === 2) ? TRAINING_CONFIG_2 : TRAINING_CONFIG;
 
+  // Keep base configs immutable; override only first niyat audio for Hajj in Training 1.
+  activeConfig = {
+    ...activeConfig,
+    playlist: (activeConfig.playlist || []).map((item, index) => {
+      if (trainingId === 1 && PILGRIMAGE_MODE === "hajj" && index === 0) {
+        return { ...item, audio: "assets/media/audio/umrah/hajjNiyatFinal.mp3" };
+      }
+      return { ...item };
+    }),
+  };
+
   setBackground();
   // setSilhouette();
 
   currentIndex = 0;
+  maxIndexReached = 0;
   allFinished = false;
   pendingGo = false;
 
@@ -463,43 +632,38 @@ window.addEventListener("metamosque:startTraining", async (e) => {
   nextSceneId = (d && typeof d.nextSceneId === "string") ? d.nextSceneId : "";
 
   // Set button label based on training ID
-  const buttonLabel = (trainingId === 2) ? "FINISH" : nextSceneName;
-  setSkipLabel(buttonLabel);
+  const defaultLabel = (trainingId === 2) ? "FINISH" : (nextSceneName || "SCENE");
+  setSkipLabel(defaultLabel);
+  // Initially disable the finish/skip button
   setSkipState(false);
+  // Initially enable the play button
+  setPlayButtonState(true);
+  // Initially disable prev/next steps
+  setPrevStepState(false);
+  setNextStepState(false);
 
-  // Hide/show buttons based on training ID
-  const nextBtn = document.querySelector('[data-action="trainNext"]');
-  const restartBtn = document.querySelector('[data-action="trainRestart"]');
-  const pauseBtn = document.querySelector('[data-action="trainPause"]');
+  // Reset sequence state
+  isSequencePlaying = false;
+
+  // Ensure all buttons are visible for consistency
   const controlsContainer = document.querySelector('.trainingControls');
-
-  if (trainingId === 2) {
-    // Training 2: Feed back: Add restart and pause button as well
-    if (nextBtn) nextBtn.style.display = 'none';
-    if (restartBtn) restartBtn.style.display = '';
-    if (pauseBtn) pauseBtn.style.display = '';
-
-    // Make finish button interactable true
-    setSkipState(true);
-
-    // Remove centering for single button
-    if (controlsContainer) controlsContainer.classList.remove('training2-mode');
-  } else {
-    // Training 1: Show all buttons
-    if (nextBtn) nextBtn.style.display = '';
-    if (restartBtn) restartBtn.style.display = '';
-    if (pauseBtn) pauseBtn.style.display = '';
-    // Remove training2-mode class
-    if (controlsContainer) controlsContainer.classList.remove('training2-mode');
+  if (controlsContainer) {
+    const btns = controlsContainer.querySelectorAll('.hudBtn');
+    btns.forEach(b => {
+      b.style.display = 'block';
+    });
+    controlsContainer.classList.remove('training2-mode');
   }
 
   if (trainingRoot) trainingRoot.classList.remove("hidden");
 
-  // try { await init3DCharacter(); } catch (err) { console.warn("Training character init failed:", err); }
-
-  loadItem(0).then((result) => {
-    if (result && result.ok) playBothFromStart();
-  });
+  // Load first item but do NOT play automatically
+  // Navigation states will be set by loadItem but wait, 
+  // loadItem(0) will set next to true if list length > 1.
+  // The user wants it OFF at start.
+  loadItem(0);
+  // Manual override for scene start ONLY
+  setNextStepState(false);
 });
 
 window.addEventListener("metamosque:exitTraining", () => {
@@ -510,6 +674,7 @@ window.addEventListener("metamosque:exitTraining", () => {
   pendingGo = false;
 
   nextStepOncePlayed = false;
+  maxIndexReached = 0;
 
   disposeTrainingCharacter3D();
 

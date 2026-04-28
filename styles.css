@@ -917,24 +917,35 @@ body {
   grid-column: 1;
   width: 100%;
   max-width: 100%;
-  justify-self: start;
+  justify-self: center;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-wrap: nowrap;
-  gap: 0.1em;
-  padding: 2px 0 max(6px, env(safe-area-inset-bottom));
+  gap: clamp(3px, 0.42vw, 0px);
+  /* Modest inset from screen edges; row still uses most of the width for readable buttons */
+  padding: 2px clamp(12px, 3.5vw, 40px) max(6px, env(safe-area-inset-bottom));
+  padding-left: max(clamp(12px, 3.5vw, 40px), env(safe-area-inset-left, 0px));
+  padding-right: max(clamp(12px, 3.5vw, 40px), env(safe-area-inset-right, 0px));
   min-height: 0;
   background: transparent;
   position: relative;
   z-index: 2;
 }
 
+/* Training: share width evenly inside the padded bar (larger taps than content-only pills) */
+.trainingControls .hudBtn {
+  flex: 1 1 0;
+  min-width: 0;
+  width: 0;
+}
+
 .hudBtn {
   flex: 1 1 0;
   min-width: 0;
   width: 0;
-  padding: clamp(8px, 1vw, 12px) clamp(10px, 1.2vw, 18px);
+  padding: clamp(6px, 1vw, 10px) clamp(4px, 1vw, 12px);
   border-radius: 999px;
   border: none;
   background: linear-gradient(180deg, #fff4d0 0%, #e8c55a 35%, #c99020 70%, #a67210 100%);
@@ -974,20 +985,35 @@ body {
 
 .trainingControls.training2-mode .hudBtn {
   flex: 0 0 auto;
-  min-width: clamp(120px, 20vw, 200px);
+  min-width: clamp(118px, 20vw, 200px);
   width: auto;
 }
 
 @media (max-width: 500px) {
   .trainingControls {
-    gap: 0.1em;
-    padding: 2px 6px max(4px, env(safe-area-inset-bottom));
+    gap: 0.07em;
+    padding: 2px clamp(8px, 3vw, 28px) max(4px, env(safe-area-inset-bottom));
+    padding-left: max(clamp(8px, 3vw, 28px), env(safe-area-inset-left, 0px));
+    padding-right: max(clamp(8px, 3vw, 28px), env(safe-area-inset-right, 0px));
   }
 
   .hudBtn {
     padding: 6px 8px;
     font-size: 9px;
     letter-spacing: 0.4px;
+  }
+
+  .trainingControls .hudBtn {
+    padding: 6px 9px;
+    font-size: 9.5px;
+    letter-spacing: 0.42px;
+  }
+
+  /* Scene HUD: slightly larger than training (narrow bump) */
+  .sceneVideoControls .hudBtn {
+    padding: 7px 11px;
+    font-size: 11.5px;
+    letter-spacing: 0.46px;
   }
 }
 
@@ -1428,12 +1454,10 @@ body {
 }
 
 .sceneVideoFrame {
-  width: 100%;
-  max-width: 100vw;
-  height: 75%;
-  max-height: 75vh;
-  min-width: 0;
-  min-height: 0;
+  width: 90vw;
+  max-width: 1100px;
+  height: auto;
+  max-height: 70vh;
   aspect-ratio: 16 / 9;
   border-radius: 8px;
   overflow: hidden;
@@ -1498,7 +1522,7 @@ body {
   align-items: center;
   justify-content: center;
   flex-wrap: nowrap;
-  gap: 0.1em;
+  gap: 0.19em;
   padding: 2px 0 max(6px, env(safe-area-inset-bottom));
   min-height: 0;
   z-index: 100;
@@ -1507,11 +1531,14 @@ body {
   pointer-events: auto;
 }
 
+/* Scene canvas HUD — a touch larger than base .hudBtn (training unchanged) */
 .sceneVideoControls .hudBtn {
   flex: 1 1 0;
   min-width: 0;
-  max-width: 10em;
+  max-width: 10.65em;
   display: block;
+  padding: clamp(6px, 1.12vw, 13px) clamp(5px, 1.12vw, 14px);
+  font-size: clamp(10px, 1.6vw, 15.5px);
 }
 
 .sceneBackBtn {
@@ -2541,4 +2568,122 @@ body {
   box-shadow: 0 4px 0 rgba(120, 70, 10, 0.45), 0 15px 35px rgba(0, 0, 0, 0.25);
   font-size: clamp(14px, 1.8vw, 18px);
   letter-spacing: 1px;
+}
+/* ================= ORIENTATION OVERLAY ================= */
+.orientationOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(18, 18, 18, 0.98);
+  z-index: 10001; /* Above everything */
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  text-align: center;
+  pointer-events: auto;
+  opacity: 1;
+  transition: opacity 0.3s ease;
+}
+
+.orientationOverlay.hidden {
+  display: none !important;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.orientationContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.rotateIconContainer {
+  width: 120px;
+  height: 120px;
+  margin-bottom: 10px;
+  animation: rotateDevice 2.5s ease-in-out infinite;
+}
+
+.rotateIcon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 10px rgba(255, 255, 255, 0.3));
+}
+
+.orientationText {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(20px, 4vw, 28px);
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: #dcb450;
+}
+
+.orientationSubtext {
+  font-family: 'Outfit', 'Inter', sans-serif;
+  font-size: clamp(14px, 2vw, 18px);
+  color: rgba(255, 255, 255, 0.8);
+  max-width: 300px;
+}
+
+@keyframes rotateDevice {
+  0% { transform: rotate(0deg); }
+  33% { transform: rotate(-90deg); }
+  66% { transform: rotate(-90deg); }
+  100% { transform: rotate(0deg); }
+}
+
+/* Show only on phone/tablets in portrait when necessary */
+@media screen and (orientation: portrait) and (max-width: 1024px) {
+  .orientationOverlay {
+    display: flex !important;
+  }
+}
+
+@media screen and (max-aspect-ratio: 1/1) and (max-width: 1024px) {
+    .orientationOverlay {
+        display: flex !important;
+    }
+}
+
+@media screen and (min-aspect-ratio: 13/9) {
+  .orientationOverlay {
+    display: none !important;
+  }
+}
+@media screen and (min-width: 1025px) {
+  .orientationOverlay {
+    display: none !important;
+  }
+} 
+
+/* Media Loading Spinner */
+.media-loader {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 100;
+  color: white;
+  gap: 15px;
+  pointer-events: auto;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
